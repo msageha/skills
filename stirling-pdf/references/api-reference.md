@@ -10,8 +10,8 @@ processed file as a binary response.
 ## Authentication
 
 Auth is **deployment-dependent**, controlled by `security.enableLogin` /
-`SECURITY_ENABLELOGIN`. This instance runs with login disabled (no auth
-needed). If login is ever enabled, unauthenticated requests get `401` with
+`SECURITY_ENABLELOGIN`. Requests to this instance don't need an `X-API-KEY`
+header. If login is ever enabled, unauthenticated requests get `401` with
 `"Authentication required. Please provide valid credentials or X-API-KEY
 header."` — pass the key via the `X-API-KEY` header in that case.
 

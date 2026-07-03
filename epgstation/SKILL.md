@@ -12,7 +12,7 @@ metadata:
 
 # EPGStation
 
-Base URL: `http://172.16.1.101:9999/api` (EPGStation v2.10.0, no auth required).
+Base URL: `http://172.16.1.101:9999/api` (EPGStation v2.10.0)。リクエストに認証情報を付与する必要はない。
 
 ## Key facts
 

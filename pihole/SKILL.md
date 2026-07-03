@@ -11,13 +11,13 @@ metadata:
 
 # Pi-hole
 
-Base URL: `http://172.16.1.101:8100/api` (Pi-hole v6 REST API). No authentication
-required on this instance (no admin password set).
+Base URL: `http://172.16.1.101:8100/api` (Pi-hole v6 REST API). Requests to
+this instance don't need any authentication header/cookie.
 
 ## Key facts
 
 - Session-based SID auth exists for password-protected instances (`POST /auth`,
-  header/query/cookie `sid`) but is unused here since no password is set.
+  header/query/cookie `sid`) but isn't needed for this instance.
 - When disabling blocking, always pass a `timer` (seconds) unless the user
   explicitly wants it disabled indefinitely — warn them either way.
 - Confirm with the user before modifying allow/deny lists, adding adlists, or

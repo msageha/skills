@@ -16,9 +16,9 @@ endpoints accept `multipart/form-data` and return the processed file directly.
 
 ## Key facts
 
-- Auth is deployment-dependent: this instance has `SECURITY_ENABLELOGIN=false`
-  (no auth needed), but if login is ever enabled, requests need an `X-API-KEY`
-  header or they get a 401.
+- Auth is deployment-dependent: requests to this instance don't need an
+  `X-API-KEY` header, but if login is ever enabled, add one or requests get a
+  401.
 - Response is the processed file (binary); save with `-o output.ext`.
 - `pageNumbers` supports ranges: `1,3,5-9`, `all`, or expressions like `2n+1`.
 - Large files may take time; inform the user before starting.

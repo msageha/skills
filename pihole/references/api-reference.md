@@ -1,8 +1,8 @@
 # Pi-hole API Reference
 
 Base URL: `http://172.16.1.101:8100/api`
-Pi-hole REST API v6 (FTL v6.6.2 / core v6.4.2 / web v6.5.1). No authentication
-required on this instance (no password set).
+Pi-hole REST API v6 (FTL v6.6.2 / core v6.4.2 / web v6.5.1). Requests to this
+instance don't need any authentication header/cookie.
 
 Every response body includes a `took` field (request processing time in
 seconds, float) not shown in the examples below.
@@ -11,7 +11,7 @@ seconds, float) not shown in the examples below.
 
 ## Authentication
 
-Currently no password is set. All endpoints return data without a session.
+All endpoints on this instance return data without needing a session.
 
 If a password is configured in the future:
 
