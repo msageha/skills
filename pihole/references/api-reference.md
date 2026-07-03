@@ -1,6 +1,6 @@
 # Pi-hole API Reference
 
-Base URL: `http://172.16.1.101:8100/api`
+Base URL: `https://pihole.msageha.net/api`
 Pi-hole REST API v6 (FTL v6.6.2 / core v6.4.2 / web v6.5.1). Requests to this
 instance don't need any authentication header/cookie.
 
@@ -17,16 +17,16 @@ If a password is configured in the future:
 
 ```bash
 # Login
-curl -s -X POST "http://172.16.1.101:8100/api/auth" \
+curl -s -X POST "https://pihole.msageha.net/api/auth" \
   -H "Content-Type: application/json" \
   -d '{"password": "your-password"}' | jq '.session.sid'
 
 # Use SID in subsequent requests via header, cookie, or query parameter
-curl -s -H "sid: YOUR_SID" "http://172.16.1.101:8100/api/stats/summary"
-curl -s "http://172.16.1.101:8100/api/stats/summary?sid=YOUR_SID"
+curl -s -H "sid: YOUR_SID" "https://pihole.msageha.net/api/stats/summary"
+curl -s "https://pihole.msageha.net/api/stats/summary?sid=YOUR_SID"
 
 # Logout
-curl -s -X DELETE "http://172.16.1.101:8100/api/auth" -H "sid: YOUR_SID"
+curl -s -X DELETE "https://pihole.msageha.net/api/auth" -H "sid: YOUR_SID"
 ```
 
 Session validity: 5 minutes by default, extended by each authenticated request.

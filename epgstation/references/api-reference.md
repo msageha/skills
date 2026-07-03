@@ -1,6 +1,6 @@
 # EPGStation API Reference
 
-Base URL: `http://172.16.1.101:9999/api`
+Base URL: `https://epgstation.msageha.net/api`
 OpenAPI Version: 3.0.1 / EPGStation v2.10.0
 
 ---

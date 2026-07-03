@@ -1,12 +1,12 @@
 # Stirling PDF Command Recipes
 
 Ready-to-run `curl` examples for the endpoints listed in
-[api-reference.md](api-reference.md). Base URL: `http://172.16.1.101:18085/api/v1`.
+[api-reference.md](api-reference.md). Base URL: `https://pdf-tools.msageha.net/api/v1`.
 
 ## PDF to Markdown (for Obsidian)
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/markdown" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/markdown" \
   -F "fileInput=@input.pdf" \
   -o output.md
 ```
@@ -14,7 +14,7 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/markdown" \
 ## PDF to Text
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/text" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/text" \
   -F "fileInput=@input.pdf" \
   -F "outputFormat=txt" \
   -o output.txt
@@ -24,7 +24,7 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/text" \
 
 ```bash
 # All pages as separate PNG files (returned as ZIP)
-curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/img" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/img" \
   -F "fileInput=@input.pdf" \
   -F "imageFormat=png" \
   -F "singleOrMultiple=multiple" \
@@ -34,7 +34,7 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/img" \
   -o output.zip
 
 # Single page as JPEG
-curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/img" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/img" \
   -F "fileInput=@input.pdf" \
   -F "imageFormat=jpeg" \
   -F "singleOrMultiple=single" \
@@ -47,11 +47,11 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/img" \
 ## PDF to Word / HTML
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/word" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/word" \
   -F "fileInput=@input.pdf" \
   -o output.docx
 
-curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/html" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/html" \
   -F "fileInput=@input.pdf" \
   -o output.html
 ```
@@ -59,21 +59,21 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/html" \
 ## Markdown / HTML / URL / Office to PDF
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/markdown/pdf" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/convert/markdown/pdf" \
   -F "fileInput=@input.md" \
   -o output.pdf
 
-curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/html/pdf" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/convert/html/pdf" \
   -F "fileInput=@input.html" \
   -F "zoom=1" \
   -o output.pdf
 
-curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/url/pdf" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/convert/url/pdf" \
   -F "urlInput=https://example.com" \
   -o output.pdf
 
 # Supports .doc, .docx, .xls, .xlsx, .ppt, .pptx, .odt, .ods, .odp, .csv, etc.
-curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/file/pdf" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/convert/file/pdf" \
   -F "fileInput=@document.docx" \
   -o output.pdf
 ```
@@ -81,7 +81,7 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/file/pdf" \
 ## Images to PDF
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/img/pdf" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/convert/img/pdf" \
   -F "fileInput=@image1.png" \
   -F "fileInput=@image2.png" \
   -F "fitOption=maintainAspectRatio" \
@@ -93,29 +93,29 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/img/pdf" \
 ## Merge / Split / Remove / Rotate / Rearrange Pages
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/general/merge-pdfs" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/general/merge-pdfs" \
   -F "fileInput=@file1.pdf" \
   -F "fileInput=@file2.pdf" \
   -F "sortType=orderProvided" \
   -F "removeCertSign=true" \
   -o merged.pdf
 
-curl -s -X POST "http://172.16.1.101:18085/api/v1/general/split-pages" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/general/split-pages" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=1,3,5-9" \
   -o split.zip
 
-curl -s -X POST "http://172.16.1.101:18085/api/v1/general/remove-pages" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/general/remove-pages" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=2,4" \
   -o output.pdf
 
-curl -s -X POST "http://172.16.1.101:18085/api/v1/general/rotate-pdf" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/general/rotate-pdf" \
   -F "fileInput=@input.pdf" \
   -F "angle=90" \
   -o rotated.pdf
 
-curl -s -X POST "http://172.16.1.101:18085/api/v1/general/rearrange-pages" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/general/rearrange-pages" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=3,1,2,4" \
   -o rearranged.pdf
@@ -124,7 +124,7 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/general/rearrange-pages" \
 ## Compress
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/compress-pdf" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/misc/compress-pdf" \
   -F "fileInput=@input.pdf" \
   -F "optimizeLevel=5" \
   -F "expectedOutputSize=25KB" \
@@ -139,7 +139,7 @@ files are bundled in the deployed image (full/lite/ultra-lite variant) — check
 
 ```bash
 # Japanese + English OCR
-curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/ocr-pdf" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/misc/ocr-pdf" \
   -F "fileInput=@scanned.pdf" \
   -F "languages=jpn" \
   -F "languages=eng" \
@@ -148,7 +148,7 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/ocr-pdf" \
   -o ocr_output.pdf
 
 # Force OCR on all pages
-curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/ocr-pdf" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/misc/ocr-pdf" \
   -F "fileInput=@scanned.pdf" \
   -F "languages=jpn" \
   -F "ocrType=force-ocr" \
@@ -161,12 +161,12 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/ocr-pdf" \
 ## Repair / Flatten
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/repair" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/misc/repair" \
   -F "fileInput=@corrupted.pdf" \
   -o repaired.pdf
 
 # Flatten only forms
-curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/flatten" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/misc/flatten" \
   -F "fileInput=@input.pdf" \
   -F "flattenOnlyForms=true" \
   -o flattened.pdf
@@ -175,7 +175,7 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/flatten" \
 ## Extract Images
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/extract-images" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/misc/extract-images" \
   -F "fileInput=@input.pdf" \
   -F "format=png" \
   -o images.zip
@@ -184,7 +184,7 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/extract-images" \
 ## Add Page Numbers
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/add-page-numbers" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-page-numbers" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=all" \
   -F "position=8" \
@@ -198,7 +198,7 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/add-page-numbers" \
 ## Add Text Stamp
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/add-stamp" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-stamp" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=all" \
   -F "stampType=text" \
@@ -213,7 +213,7 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/add-stamp" \
 ## Update Metadata
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/update-metadata" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/misc/update-metadata" \
   -F "fileInput=@input.pdf" \
   -F "title=My Document" \
   -F "author=Author Name" \
@@ -225,18 +225,18 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/update-metadata" \
 ## Add / Remove Password, Watermark
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/security/add-password" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/security/add-password" \
   -F "fileInput=@input.pdf" \
   -F "password=mypassword" \
   -F "keyLength=256" \
   -o protected.pdf
 
-curl -s -X POST "http://172.16.1.101:18085/api/v1/security/remove-password" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/security/remove-password" \
   -F "fileInput=@input.pdf" \
   -F "password=currentpassword" \
   -o unlocked.pdf
 
-curl -s -X POST "http://172.16.1.101:18085/api/v1/security/add-watermark" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/security/add-watermark" \
   -F "fileInput=@input.pdf" \
   -F "watermarkType=text" \
   -F "watermarkText=DRAFT" \
@@ -250,27 +250,27 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/security/add-watermark" \
 ## Analysis
 
 ```bash
-curl -s -X POST "http://172.16.1.101:18085/api/v1/analysis/page-count" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/analysis/page-count" \
   -F "fileInput=@input.pdf"
 
-curl -s -X POST "http://172.16.1.101:18085/api/v1/analysis/basic-info" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/analysis/basic-info" \
   -F "fileInput=@input.pdf"
 
-curl -s -X POST "http://172.16.1.101:18085/api/v1/analysis/document-properties" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/analysis/document-properties" \
   -F "fileInput=@input.pdf"
 ```
 
 ## Server Status
 
 ```bash
-curl -s "http://172.16.1.101:18085/api/v1/info/status" | jq .
+curl -s "https://pdf-tools.msageha.net/api/v1/info/status" | jq .
 ```
 
 ## Obsidian Integration Workflow
 
 ```bash
 # 1. Convert PDF to Markdown
-curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/markdown" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/markdown" \
   -F "fileInput=@document.pdf" \
   -o /tmp/document.md
 
@@ -278,7 +278,7 @@ curl -s -X POST "http://172.16.1.101:18085/api/v1/convert/pdf/markdown" \
 obsidian-cli create "Notes/document" --content "$(cat /tmp/document.md)"
 
 # Or extract images from PDF and save alongside the note
-curl -s -X POST "http://172.16.1.101:18085/api/v1/misc/extract-images" \
+curl -s -X POST "https://pdf-tools.msageha.net/api/v1/misc/extract-images" \
   -F "fileInput=@document.pdf" \
   -F "format=png" \
   -o /tmp/images.zip

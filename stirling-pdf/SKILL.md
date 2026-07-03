@@ -11,7 +11,7 @@ metadata:
 
 # Stirling PDF
 
-Base URL: `http://172.16.1.101:18085/api/v1` (Stirling PDF v2.14.0). All
+Base URL: `https://pdf-tools.msageha.net/api/v1` (Stirling PDF v2.14.0). All
 endpoints accept `multipart/form-data` and return the processed file directly.
 
 ## Key facts

@@ -11,7 +11,7 @@ metadata:
 
 # Pi-hole
 
-Base URL: `http://172.16.1.101:8100/api` (Pi-hole v6 REST API). Requests to
+Base URL: `https://pihole.msageha.net/api` (Pi-hole v6 REST API). Requests to
 this instance don't need any authentication header/cookie.
 
 ## Key facts

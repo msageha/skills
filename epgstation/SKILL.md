@@ -1,7 +1,7 @@
 ---
 name: epgstation
 description: "EPGStation TV recording service. Use when: user asks about TV programs, schedules, recordings, or reservations. Controls EPGStation via REST API for browsing what's on TV, searching programs, managing recordings and auto-recording rules."
-homepage: http://172.16.1.101:9999
+homepage: https://epgstation.msageha.net
 metadata:
   openclaw:
     emoji: "📺"
@@ -12,7 +12,7 @@ metadata:
 
 # EPGStation
 
-Base URL: `http://172.16.1.101:9999/api` (EPGStation v2.10.0)。
+Base URL: `https://epgstation.msageha.net/api` (EPGStation v2.10.0)。
 
 ## Key facts
 

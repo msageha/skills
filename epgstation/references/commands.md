@@ -1,31 +1,31 @@
 # EPGStation Command Recipes
 
 Ready-to-run `curl` examples for the endpoints listed in
-[api-reference.md](api-reference.md). Base URL: `http://172.16.1.101:9999/api`.
+[api-reference.md](api-reference.md). Base URL: `https://epgstation.msageha.net/api`.
 
 ## Currently Broadcasting
 
 ```bash
-curl -s "http://172.16.1.101:9999/api/schedules/broadcasting?isHalfWidth=true" | jq '.[] | {channel: .channel.name, programs: [.programs[] | {name, description, startAt: (.startAt / 1000 | strftime("%H:%M")), endAt: (.endAt / 1000 | strftime("%H:%M"))}]}'
+curl -s "https://epgstation.msageha.net/api/schedules/broadcasting?isHalfWidth=true" | jq '.[] | {channel: .channel.name, programs: [.programs[] | {name, description, startAt: (.startAt / 1000 | strftime("%H:%M")), endAt: (.endAt / 1000 | strftime("%H:%M"))}]}'
 ```
 
 ## Channel List
 
 ```bash
-curl -s "http://172.16.1.101:9999/api/channels" | jq '.[] | {id, name: .halfWidthName, type: .channelType}'
+curl -s "https://epgstation.msageha.net/api/channels" | jq '.[] | {id, name: .halfWidthName, type: .channelType}'
 ```
 
 ## Channel Schedule
 
 ```bash
 # days=1 for today
-curl -s "http://172.16.1.101:9999/api/schedules/{channelId}?days=1&isHalfWidth=true" | jq '[.programs[] | {id, name, description, start: (.startAt / 1000 | strftime("%H:%M")), end: (.endAt / 1000 | strftime("%H:%M"))}]'
+curl -s "https://epgstation.msageha.net/api/schedules/{channelId}?days=1&isHalfWidth=true" | jq '[.programs[] | {id, name, description, start: (.startAt / 1000 | strftime("%H:%M")), end: (.endAt / 1000 | strftime("%H:%M"))}]'
 ```
 
 ## Search Programs
 
 ```bash
-curl -s -X POST "http://172.16.1.101:9999/api/schedules/search" \
+curl -s -X POST "https://epgstation.msageha.net/api/schedules/search" \
   -H "Content-Type: application/json" \
   -d '{
     "isHalfWidth": true,
@@ -45,7 +45,7 @@ curl -s -X POST "http://172.16.1.101:9999/api/schedules/search" \
 ## Reserve (by Program ID)
 
 ```bash
-curl -s -X POST "http://172.16.1.101:9999/api/reserves" \
+curl -s -X POST "https://epgstation.msageha.net/api/reserves" \
   -H "Content-Type: application/json" \
   -d '{"programId": PROGRAM_ID, "allowEndLack": true}'
 ```
@@ -53,7 +53,7 @@ curl -s -X POST "http://172.16.1.101:9999/api/reserves" \
 ## Reserve (by Time)
 
 ```bash
-curl -s -X POST "http://172.16.1.101:9999/api/reserves" \
+curl -s -X POST "https://epgstation.msageha.net/api/reserves" \
   -H "Content-Type: application/json" \
   -d '{
     "allowEndLack": true,
@@ -69,48 +69,48 @@ curl -s -X POST "http://172.16.1.101:9999/api/reserves" \
 ## List Reservations
 
 ```bash
-curl -s "http://172.16.1.101:9999/api/reserves?isHalfWidth=true&limit=50" | jq '[.reserves[] | {id, name, channelId, start: (.startAt / 1000 | strftime("%Y-%m-%d %H:%M")), end: (.endAt / 1000 | strftime("%H:%M")), isSkip, isConflict}]'
+curl -s "https://epgstation.msageha.net/api/reserves?isHalfWidth=true&limit=50" | jq '[.reserves[] | {id, name, channelId, start: (.startAt / 1000 | strftime("%Y-%m-%d %H:%M")), end: (.endAt / 1000 | strftime("%H:%M")), isSkip, isConflict}]'
 ```
 
 ## Delete Reservation
 
 ```bash
-curl -s -X DELETE "http://172.16.1.101:9999/api/reserves/{reserveId}"
+curl -s -X DELETE "https://epgstation.msageha.net/api/reserves/{reserveId}"
 ```
 
 ## Reservation Counts
 
 ```bash
-curl -s "http://172.16.1.101:9999/api/reserves/cnts" | jq .
+curl -s "https://epgstation.msageha.net/api/reserves/cnts" | jq .
 ```
 
 ## Currently Recording
 
 ```bash
-curl -s "http://172.16.1.101:9999/api/recording?isHalfWidth=true" | jq '[.records[] | {id, name, channelId, start: (.startAt / 1000 | strftime("%H:%M")), end: (.endAt / 1000 | strftime("%H:%M"))}]'
+curl -s "https://epgstation.msageha.net/api/recording?isHalfWidth=true" | jq '[.records[] | {id, name, channelId, start: (.startAt / 1000 | strftime("%H:%M")), end: (.endAt / 1000 | strftime("%H:%M"))}]'
 ```
 
 ## List / Search Recorded Programs
 
 ```bash
-curl -s "http://172.16.1.101:9999/api/recorded?isHalfWidth=true&limit=20" | jq '[.records[] | {id, name, channelId, start: (.startAt / 1000 | strftime("%Y-%m-%d %H:%M")), isRecording, isProtected}]'
+curl -s "https://epgstation.msageha.net/api/recorded?isHalfWidth=true&limit=20" | jq '[.records[] | {id, name, channelId, start: (.startAt / 1000 | strftime("%Y-%m-%d %H:%M")), isRecording, isProtected}]'
 
 # filtered by keyword
-curl -s "http://172.16.1.101:9999/api/recorded?isHalfWidth=true&keyword=キーワード&limit=20" | jq '[.records[] | {id, name, start: (.startAt / 1000 | strftime("%Y-%m-%d %H:%M"))}]'
+curl -s "https://epgstation.msageha.net/api/recorded?isHalfWidth=true&keyword=キーワード&limit=20" | jq '[.records[] | {id, name, start: (.startAt / 1000 | strftime("%Y-%m-%d %H:%M"))}]'
 ```
 
 ## Delete / Protect / Unprotect Recorded Program
 
 ```bash
-curl -s -X DELETE "http://172.16.1.101:9999/api/recorded/{recordedId}"
-curl -s -X PUT "http://172.16.1.101:9999/api/recorded/{recordedId}/protect"
-curl -s -X PUT "http://172.16.1.101:9999/api/recorded/{recordedId}/unprotect"
+curl -s -X DELETE "https://epgstation.msageha.net/api/recorded/{recordedId}"
+curl -s -X PUT "https://epgstation.msageha.net/api/recorded/{recordedId}/protect"
+curl -s -X PUT "https://epgstation.msageha.net/api/recorded/{recordedId}/unprotect"
 ```
 
 ## Add Auto-Recording Rule
 
 ```bash
-curl -s -X POST "http://172.16.1.101:9999/api/rules" \
+curl -s -X POST "https://epgstation.msageha.net/api/rules" \
   -H "Content-Type: application/json" \
   -d '{
     "isTimeSpecification": false,
@@ -135,11 +135,11 @@ curl -s -X POST "http://172.16.1.101:9999/api/rules" \
 ## List / Delete / Disable / Enable Rule
 
 ```bash
-curl -s "http://172.16.1.101:9999/api/rules?offset=0&limit=20" | jq '[.rules[] | {id, keyword: .searchOption.keyword, enable: .reserveOption.enable, reservesCnt}]'
+curl -s "https://epgstation.msageha.net/api/rules?offset=0&limit=20" | jq '[.rules[] | {id, keyword: .searchOption.keyword, enable: .reserveOption.enable, reservesCnt}]'
 
-curl -s -X DELETE "http://172.16.1.101:9999/api/rules/{ruleId}"
-curl -s -X PUT "http://172.16.1.101:9999/api/rules/{ruleId}/disable"
-curl -s -X PUT "http://172.16.1.101:9999/api/rules/{ruleId}/enable"
+curl -s -X DELETE "https://epgstation.msageha.net/api/rules/{ruleId}"
+curl -s -X PUT "https://epgstation.msageha.net/api/rules/{ruleId}/disable"
+curl -s -X PUT "https://epgstation.msageha.net/api/rules/{ruleId}/enable"
 ```
 
 ## UnixtimeMS Conversion
