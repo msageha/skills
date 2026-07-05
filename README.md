@@ -6,6 +6,7 @@
 
 | Skill | 用途 |
 |---|---|
+| [daikin](daikin/) | ダイキン MCK706A-W（加湿空気清浄機）を REST API 経由で管理。温度・湿度・空気質センサーの取得・電源 ON/OFF |
 | [deco](deco/) | TP-Link Deco BE85（メッシュルーター）を REST API 経由で管理。ネットワーク状況・接続クライアント・Wi-Fi ON/OFF/設定変更・再起動 |
 | [epgstation](epgstation/) | EPGStation（TV録画サーバー）を REST API 経由で操作。番組検索・録画予約・自動録画ルール管理 |
 | [pihole](pihole/) | Pi-hole（DNS 広告ブロッカー）v6 REST API 経由の管理。ブロック状況・クエリログ・許可/拒否リスト |
