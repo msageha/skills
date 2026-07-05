@@ -2,8 +2,8 @@
 
 Base URL: `https://daikin.msageha.net/api`
 FastAPI wrapper (daikin-mck706a-api v0.1.0) around the Daikin MCK706A-W air
-purifier's local `dsiot` API (`POST /dsiot/multireq` on the unit). No
-authentication toward this instance. Interactive docs:
+purifier's local `dsiot` API (`POST /dsiot/multireq` on the unit). Requests to
+this instance don't need any authentication header/cookie. Interactive docs:
 `https://daikin.msageha.net/docs`.
 
 Field semantics are reverse-engineered from the actual unit (FW `3_15_0`,

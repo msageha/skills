@@ -41,7 +41,7 @@ manage active sessions.
 
 ### GET /auth
 
-Check authentication status. No auth required.
+Check authentication status.
 
 **Response:**
 

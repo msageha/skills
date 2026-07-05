@@ -2,9 +2,9 @@
 
 Base URL: `https://deco.msageha.net/api`
 FastAPI wrapper (deco-be85-api v0.1.0) around the TP-Link Deco BE85 local web
-API. No authentication needed toward this instance — the server performs the
-router login itself (lazy on first call; auto re-login + 1 retry on session
-expiry). Interactive docs: `https://deco.msageha.net/docs`.
+API. Requests to this instance don't need any authentication header/cookie;
+the server performs the router login itself (lazy on first call; auto re-login
++ 1 retry on session expiry). Interactive docs: `https://deco.msageha.net/docs`.
 
 Router-shaped endpoints (`/network/*`, `/wireless` GET, `/system/*`, `/raw`)
 return the decrypted router response as-is; field sets can vary by firmware.

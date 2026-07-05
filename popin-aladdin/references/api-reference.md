@@ -2,8 +2,9 @@
 
 Base URL: `https://popin-aladdin.msageha.net/api`
 FastAPI wrapper (popin-aladdin-api v0.1.0) around the popIn Aladdin
-(ceiling-light projector, UPnP friendly name `Aladdin 2`). No authentication
-toward this instance. Interactive docs: `https://popin-aladdin.msageha.net/docs`.
+(ceiling-light projector, UPnP friendly name `Aladdin 2`). Requests to this
+instance don't need any authentication header/cookie. Interactive docs:
+`https://popin-aladdin.msageha.net/docs`.
 
 Two control planes on the unit:
 

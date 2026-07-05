@@ -12,8 +12,8 @@ metadata:
 # Daikin MCK706A
 
 Base URL: `https://daikin.msageha.net/api` (FastAPI wrapper around the Daikin
-MCK706A-W local `dsiot` API). No authentication header/cookie needed — the
-unit itself is unauthenticated on the LAN and the server talks to it directly.
+MCK706A-W local `dsiot` API). Requests to this instance don't need any
+authentication header/cookie; the server talks to the unit directly.
 
 ## Key facts
 

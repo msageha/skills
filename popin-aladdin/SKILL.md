@@ -13,8 +13,8 @@ metadata:
 
 Base URL: `https://popin-aladdin.msageha.net/api` (FastAPI wrapper around the
 popIn Aladdin's local UPnP/DLNA MediaRenderer + its proprietary popIn/MAXHUB
-control protocol). No authentication header/cookie needed — the unit itself
-is unauthenticated on the LAN and the server talks to it directly.
+control protocol). Requests to this instance don't need any authentication
+header/cookie; the server talks to the unit directly.
 
 ## Key facts
 
