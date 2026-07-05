@@ -38,6 +38,35 @@ curl -s -X POST "https://daikin.msageha.net/api/power" \
   -d '{"on": false}' | jq .
 ```
 
+## Fan Rate (0-7, purpose-built, no confirmation needed)
+
+```bash
+curl -s -X POST "https://daikin.msageha.net/api/fan-rate" \
+  -H "Content-Type: application/json" \
+  -d '{"rate": 6}' | jq .
+```
+
+## Mode (0-5, purpose-built, no confirmation needed — label mapping unverified)
+
+Only send a mode number the user gave you explicitly, or one read back from
+`/status`. See [api-reference.md](api-reference.md#post-mode) before guessing
+which number corresponds to a named course.
+
+```bash
+curl -s -X POST "https://daikin.msageha.net/api/mode" \
+  -H "Content-Type: application/json" \
+  -d '{"mode": 2}' | jq .
+```
+
+To help build a verified number→course mapping, snapshot `mode` before and
+after pressing a course button on the physical remote:
+
+```bash
+curl -s "https://daikin.msageha.net/api/status" | jq '.mode'
+# press a course button on the remote, then:
+curl -s "https://daikin.msageha.net/api/status" | jq '.mode'
+```
+
 ## Device Info
 
 ```bash

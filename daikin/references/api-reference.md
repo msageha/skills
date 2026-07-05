@@ -105,6 +105,49 @@ Response: `{ "power": true }`
 
 ---
 
+## POST /fan-rate
+
+Set the airflow level (writes to the `fan_rate` property). Purpose-built,
+no `confirm` required.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| rate | integer | yes | Airflow level, raw 0..7 |
+
+Response: `{ "fan_rate": 6 }`
+
+---
+
+## POST /mode
+
+Set the operation mode (writes to the `mode` property). Purpose-built, no
+`confirm` required — but **the mapping from number to course name is an
+unverified guess**, not a confirmed spec value.
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| mode | integer | yes | Operation mode, raw 0..5 |
+
+Response: `{ "mode": 2 }`
+
+### Mode label candidates (unverified guess)
+
+Daikin doesn't publish this mapping, and no MCK706A-W manual with a
+number-keyed mode table has been found. The six-way range (0..5) happens to
+line up with course names that appear across Daikin's air-purifier lineup in
+general (official product pages / spec sheets, not this unit's manual):
+自動(おまかせ), 加湿(加湿ターボ), 花粉, ターボ/パワフル, しずか, 手動
+(fixed fan). **Do not assume a specific number maps to a specific one of
+these** — treat this list only as "these are plausible course names that
+might exist," not as an index into it.
+
+To build a real mapping: read `GET /status` (`mode` field) before and after
+pressing each course button on the physical remote/app, and record the
+before/after values. Once a few numbers are confirmed this way, update this
+table with verified pairs.
+
+---
+
 ## GET /tree
 
 Every decoded leaf of `adr_0100.dgc_status`, keyed by property path. Useful

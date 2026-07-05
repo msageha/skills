@@ -25,10 +25,19 @@ authentication header/cookie; the server talks to the unit directly.
   report them as raw integers, don't invent label names; `monitors.*`
   (PM2.5/dust/odor-like sensors) are decoded values with unmapped units —
   present them as relative/uncalibrated readings.
-- The only safe, purpose-built control is `POST /power` (`{"on": true|false}`).
+- Purpose-built controls that don't need user confirmation: `POST /power`
+  (`{"on": true|false}`), `POST /fan-rate` (`{"rate": 0..7}`), and
+  `POST /mode` (`{"mode": 0..5}`). For `/mode`, only act on a numeric value
+  the user gave you directly (or one read back from `GET /status`) — the
+  number-to-course-name mapping is an unverified guess (see
+  [references/api-reference.md](references/api-reference.md#post-mode)), so
+  if the user names a course by label ("花粉モードにして" etc.) read the
+  current `mode` first and ask them to confirm the target number via the
+  physical remote/app rather than guessing which digit it is.
 - `POST /write` is a raw dsiot property write (requires `confirm: true`) and
   can change arbitrary unit settings — confirm with the user and prefer
-  `POST /power`. `POST /read` and `GET /tree` are read-only and safe.
+  `POST /power` / `POST /fan-rate` / `POST /mode` when they cover the need.
+  `POST /read` and `GET /tree` are read-only and safe.
 - Errors: `502` unit returned an error (`detail` + dsiot `rsc` code; `2000`
   is OK), `504` unit unreachable on the LAN, `400`/`422` request validation.
 
@@ -38,6 +47,8 @@ authentication header/cookie; the server talks to the unit directly.
 |---|---|
 | Air & unit state (power/temp/humidity/mode/fan/sensors) | `GET /status` |
 | Turn purifier on/off | `POST /power` |
+| Set airflow level (0-7) | `POST /fan-rate` |
+| Set operation mode (raw 0-5, label unverified) | `POST /mode` |
 | Device info (name/model/mac/firmware/ssid/led) | `GET /info` |
 | Full decoded property tree (sensor exploration) | `GET /tree` |
 | Raw dsiot read (escape hatch) | `POST /read` |
