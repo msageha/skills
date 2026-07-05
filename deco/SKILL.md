@@ -11,7 +11,7 @@ metadata:
 
 # Deco BE85
 
-Base URL: `https://daikin.msageha.net/api` (FastAPI wrapper around the TP-Link
+Base URL: `https://deco.msageha.net/api` (FastAPI wrapper around the TP-Link
 Deco BE85 local API). Requests to this instance don't need any authentication
 header/cookie — the server logs into the router itself with stored credentials.
 
@@ -33,20 +33,20 @@ header/cookie — the server logs into the router itself with stored credentials
 
 ## Core operations
 
-| Task | Endpoint |
-|---|---|
-| Overview (WAN/CPU/mem/node & client counts) | `GET /dashboard` |
-| Deco units (mesh nodes) | `GET /devices` |
-| Connected clients | `GET /clients?online_only=true` |
-| Blocked clients | `GET /clients/blocked` |
-| Wi-Fi settings (all bands, host/guest) | `GET /wireless` |
-| Wi-Fi ON/OFF per band | `POST /wireless` |
-| Change SSID/password/channel etc. | `POST /wireless/config` |
-| WAN / internet / LAN / IPv6 status | `GET /network/wan`, `/network/internet`, `/network/lan`, `/network/ipv6` |
-| CPU / memory usage | `GET /network/performance` |
-| Reboot Deco units (destructive) | `POST /reboot` |
-| Any other Deco endpoint (escape hatch) | `POST /raw` |
-| Server health / explicit login | `GET /health`, `POST /login`, `POST /logout` |
+| Task                                        | Endpoint                                                                 |
+| ------------------------------------------- | ------------------------------------------------------------------------ |
+| Overview (WAN/CPU/mem/node & client counts) | `GET /dashboard`                                                         |
+| Deco units (mesh nodes)                     | `GET /devices`                                                           |
+| Connected clients                           | `GET /clients?online_only=true`                                          |
+| Blocked clients                             | `GET /clients/blocked`                                                   |
+| Wi-Fi settings (all bands, host/guest)      | `GET /wireless`                                                          |
+| Wi-Fi ON/OFF per band                       | `POST /wireless`                                                         |
+| Change SSID/password/channel etc.           | `POST /wireless/config`                                                  |
+| WAN / internet / LAN / IPv6 status          | `GET /network/wan`, `/network/internet`, `/network/lan`, `/network/ipv6` |
+| CPU / memory usage                          | `GET /network/performance`                                               |
+| Reboot Deco units (destructive)             | `POST /reboot`                                                           |
+| Any other Deco endpoint (escape hatch)      | `POST /raw`                                                              |
+| Server health / explicit login              | `GET /health`, `POST /login`, `POST /logout`                             |
 
 Full request/response schemas and ready-to-run curl examples: see
 [references/api-reference.md](references/api-reference.md) and
