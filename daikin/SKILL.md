@@ -43,17 +43,17 @@ authentication header/cookie; the server talks to the unit directly.
 
 ## Core operations
 
-| Task | Endpoint |
-|---|---|
-| Air & unit state (power/temp/humidity/mode/fan/sensors) | `GET /status` |
-| Turn purifier on/off | `POST /power` |
-| Set airflow level (0-7) | `POST /fan-rate` |
-| Set operation mode (raw 0-5, label unverified) | `POST /mode` |
-| Device info (name/model/mac/firmware/ssid/led) | `GET /info` |
-| Full decoded property tree (sensor exploration) | `GET /tree` |
-| Raw dsiot read (escape hatch) | `POST /read` |
-| Raw dsiot write (escape hatch, destructive) | `POST /write` |
-| Server health | `GET /health` |
+| Task                                                    | Endpoint         |
+| ------------------------------------------------------- | ---------------- |
+| Air & unit state (power/temp/humidity/mode/fan/sensors) | `GET /status`    |
+| Turn purifier on/off                                    | `POST /power`    |
+| Set airflow level (0-7)                                 | `POST /fan-rate` |
+| Set operation mode (raw 0-5, label unverified)          | `POST /mode`     |
+| Device info (name/model/mac/firmware/ssid/led)          | `GET /info`      |
+| Full decoded property tree (sensor exploration)         | `GET /tree`      |
+| Raw dsiot read (escape hatch)                           | `POST /read`     |
+| Raw dsiot write (escape hatch, destructive)             | `POST /write`    |
+| Server health                                           | `GET /health`    |
 
 Full request/response schemas and ready-to-run curl examples: see
 [references/api-reference.md](references/api-reference.md) and

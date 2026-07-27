@@ -25,20 +25,20 @@ Base URL: `https://epgstation.msageha.net/api` (EPGStation v2.10.0)。
 
 ## Core operations
 
-| Task | Endpoint |
-|---|---|
-| Currently broadcasting | `GET /schedules/broadcasting` |
-| Channel list | `GET /channels` |
-| Channel schedule | `GET /schedules/{channelId}?days=N` |
-| Program detail | `GET /schedules/detail/{programId}` |
-| Search programs | `POST /schedules/search` |
-| Reserve (by program or time range) | `POST /reserves` |
-| List / delete reservation | `GET`, `DELETE /reserves/{reserveId}` |
-| Reservation counts (conflicts/skips) | `GET /reserves/cnts` |
-| Currently recording | `GET /recording` |
-| List / search recorded | `GET /recorded` |
-| Protect / delete recorded | `PUT /recorded/{id}/protect`, `DELETE /recorded/{id}` |
-| Auto-recording rules | `POST /rules`, `GET /rules`, `PUT /rules/{id}/enable\|disable` |
+| Task                                 | Endpoint                                                       |
+| ------------------------------------ | -------------------------------------------------------------- |
+| Currently broadcasting               | `GET /schedules/broadcasting`                                  |
+| Channel list                         | `GET /channels`                                                |
+| Channel schedule                     | `GET /schedules/{channelId}?days=N`                            |
+| Program detail                       | `GET /schedules/detail/{programId}`                            |
+| Search programs                      | `POST /schedules/search`                                       |
+| Reserve (by program or time range)   | `POST /reserves`                                               |
+| List / delete reservation            | `GET`, `DELETE /reserves/{reserveId}`                          |
+| Reservation counts (conflicts/skips) | `GET /reserves/cnts`                                           |
+| Currently recording                  | `GET /recording`                                               |
+| List / search recorded               | `GET /recorded`                                                |
+| Protect / delete recorded            | `PUT /recorded/{id}/protect`, `DELETE /recorded/{id}`          |
+| Auto-recording rules                 | `POST /rules`, `GET /rules`, `PUT /rules/{id}/enable\|disable` |
 
 Full request/response schemas and ready-to-run curl examples: see
 [references/api-reference.md](references/api-reference.md) and

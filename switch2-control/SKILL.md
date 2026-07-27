@@ -76,14 +76,14 @@ curl -s -X POST http://172.16.1.108:8765/macro \
 
 ## ボタン名一覧
 
-| 入力名 | 意味 |
-|---|---|
-| `a` `b` `x` `y` | A / B / X / Y |
-| `l` `r` `zl` `zr` | L / R / ZL / ZR |
-| `plus` (= `start`) / `minus` (= `select`) | + / − |
-| `home` / `capture` | HOME / キャプチャ |
-| `l3` / `r3` | スティック押し込み |
-| `up` `down` `left` `right` | 十字キー |
+| 入力名                                    | 意味               |
+| ----------------------------------------- | ------------------ |
+| `a` `b` `x` `y`                           | A / B / X / Y      |
+| `l` `r` `zl` `zr`                         | L / R / ZL / ZR    |
+| `plus` (= `start`) / `minus` (= `select`) | + / −              |
+| `home` / `capture`                        | HOME / キャプチャ  |
+| `l3` / `r3`                               | スティック押し込み |
+| `up` `down` `left` `right`                | 十字キー           |
 
 ## 接続管理
 

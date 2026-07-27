@@ -90,28 +90,28 @@ Overview of Pi-hole activity.
 
 Get current blocking status.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| blocking | string | `enabled` / `disabled` / `failed` / `unknown` |
-| timer | number\|null | Remaining seconds until auto-change (null = permanent) |
+| Field    | Type         | Description                                            |
+| -------- | ------------ | ------------------------------------------------------ |
+| blocking | string       | `enabled` / `disabled` / `failed` / `unknown`          |
+| timer    | number\|null | Remaining seconds until auto-change (null = permanent) |
 
 ### POST /dns/blocking
 
 Change blocking status.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| blocking | boolean | `true` = enable (default), `false` = disable |
-| timer | number\|null | Seconds until auto-reverse (null = permanent, or clears an active timer) |
+| Field    | Type         | Description                                                              |
+| -------- | ------------ | ------------------------------------------------------------------------ |
+| blocking | boolean      | `true` = enable (default), `false` = disable                             |
+| timer    | number\|null | Seconds until auto-reverse (null = permanent, or clears an active timer) |
 
 ---
 
 ### GET /stats/top_domains
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| blocked | boolean | `true` = blocked domains, `false` = permitted (default: false) |
-| count | integer | Number of results (default: 10) |
+| Parameter | Type    | Description                                                    |
+| --------- | ------- | -------------------------------------------------------------- |
+| blocked   | boolean | `true` = blocked domains, `false` = permitted (default: false) |
+| count     | integer | Number of results (default: 10)                                |
 
 **Response:** `{ "domains": [{ "domain": "example.com", "count": 8516 }], "total_queries": 29160, "blocked_queries": 6379 }`
 
@@ -119,10 +119,10 @@ Change blocking status.
 
 ### GET /stats/top_clients
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| blocked | boolean | `true` = by blocked queries, `false` = by total (default: false) |
-| count | integer | Number of results (default: 10) |
+| Parameter | Type    | Description                                                      |
+| --------- | ------- | ---------------------------------------------------------------- |
+| blocked   | boolean | `true` = by blocked queries, `false` = by total (default: false) |
+| count     | integer | Number of results (default: 10)                                  |
 
 **Response:** `{ "clients": [{ "ip": "192.168.0.44", "name": "raspberrypi.lan", "count": 5896 }], "total_queries": 29160, "blocked_queries": 6379 }`
 
@@ -130,9 +130,9 @@ Change blocking status.
 
 ### GET /stats/recent_blocked
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| count | integer | Number of results (default: 1) |
+| Parameter | Type    | Description                    |
+| --------- | ------- | ------------------------------ |
+| count     | integer | Number of results (default: 1) |
 
 **Response:** `{ "blocked": ["doubleclick.net", "..."] }`
 
@@ -148,21 +148,21 @@ Upstream DNS destination metrics / DNS query type distribution. No required para
 
 Recent DNS query log. All parameters optional.
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| length | integer | Number of results (default: 100) |
-| start | integer | Pagination offset |
-| from / until | number | Unix timestamp range |
-| domain | string | Filter by domain (wildcards `*` supported) |
-| client_ip | string | Filter by client IP (wildcards supported) |
-| client_name | string | Filter by client hostname (wildcards supported) |
-| upstream | string | Filter by upstream |
-| type | string | Filter by query type (A, AAAA, etc.) |
-| status | string | Filter by status (GRAVITY, FORWARDED, CACHE, etc.) |
-| reply | string | Filter by reply type (NODATA, NXDOMAIN, etc.) |
-| dnssec | string | Filter by DNSSEC status |
-| disk | boolean | `true` = query the on-disk long-term DB instead of the in-memory buffer (default: false) |
-| cursor | integer | Database ID for pagination |
+| Parameter    | Type    | Description                                                                              |
+| ------------ | ------- | ---------------------------------------------------------------------------------------- |
+| length       | integer | Number of results (default: 100)                                                         |
+| start        | integer | Pagination offset                                                                        |
+| from / until | number  | Unix timestamp range                                                                     |
+| domain       | string  | Filter by domain (wildcards `*` supported)                                               |
+| client_ip    | string  | Filter by client IP (wildcards supported)                                                |
+| client_name  | string  | Filter by client hostname (wildcards supported)                                          |
+| upstream     | string  | Filter by upstream                                                                       |
+| type         | string  | Filter by query type (A, AAAA, etc.)                                                     |
+| status       | string  | Filter by status (GRAVITY, FORWARDED, CACHE, etc.)                                       |
+| reply        | string  | Filter by reply type (NODATA, NXDOMAIN, etc.)                                            |
+| dnssec       | string  | Filter by DNSSEC status                                                                  |
+| disk         | boolean | `true` = query the on-disk long-term DB instead of the in-memory buffer (default: false) |
+| cursor       | integer | Database ID for pagination                                                               |
 
 **Response:**
 
@@ -205,21 +205,40 @@ Related: `GET /queries/suggestions` (autocomplete values for the filters above).
 
 Search domain in Pi-hole's lists and gravity.
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| domain | string | Domain to search (path, required) |
-| partial | boolean | Partial matching (default: false) |
-| N | integer | Max results per type (default: 20) |
-| debug | boolean | Include debug info (default: false) |
+| Parameter | Type    | Description                         |
+| --------- | ------- | ----------------------------------- |
+| domain    | string  | Domain to search (path, required)   |
+| partial   | boolean | Partial matching (default: false)   |
+| N         | integer | Max results per type (default: 20)  |
+| debug     | boolean | Include debug info (default: false) |
 
 **Response:**
 
 ```json
 {
   "search": {
-    "domains": [{ "domain": "ads.example.com", "type": "deny", "kind": "exact", "enabled": true, "groups": [0] }],
-    "gravity": [{ "domain": "ads.example.com", "address": "https://blocklist-url...", "type": "block", "enabled": true }],
-    "results": { "domains": { "exact": 1, "regex": 0 }, "gravity": { "allow": 0, "block": 1 }, "total": 2 }
+    "domains": [
+      {
+        "domain": "ads.example.com",
+        "type": "deny",
+        "kind": "exact",
+        "enabled": true,
+        "groups": [0]
+      }
+    ],
+    "gravity": [
+      {
+        "domain": "ads.example.com",
+        "address": "https://blocklist-url...",
+        "type": "block",
+        "enabled": true
+      }
+    ],
+    "results": {
+      "domains": { "exact": 1, "regex": 0 },
+      "gravity": { "allow": 0, "block": 1 },
+      "total": 2
+    }
   }
 }
 ```
@@ -235,29 +254,29 @@ List all domains. Optional path segments for filtering: `/domains`,
 
 **Response item:**
 
-| Field | Type | Description |
-|-------|------|-------------|
-| domain | string | Domain or regex pattern |
-| unicode | string | Unicode-decoded form of `domain` (relevant for punycode/IDN domains) |
-| type | string | `allow` / `deny` |
-| kind | string | `exact` / `regex` |
-| enabled | boolean | Whether entry is active |
-| comment | string | Optional comment |
-| groups | integer[] | Associated group IDs |
-| id | integer | Entry ID |
-| date_added | integer | Unix timestamp |
-| date_modified | integer | Unix timestamp |
+| Field         | Type      | Description                                                          |
+| ------------- | --------- | -------------------------------------------------------------------- |
+| domain        | string    | Domain or regex pattern                                              |
+| unicode       | string    | Unicode-decoded form of `domain` (relevant for punycode/IDN domains) |
+| type          | string    | `allow` / `deny`                                                     |
+| kind          | string    | `exact` / `regex`                                                    |
+| enabled       | boolean   | Whether entry is active                                              |
+| comment       | string    | Optional comment                                                     |
+| groups        | integer[] | Associated group IDs                                                 |
+| id            | integer   | Entry ID                                                             |
+| date_added    | integer   | Unix timestamp                                                       |
+| date_modified | integer   | Unix timestamp                                                       |
 
 #### POST /domains/{type}/{kind}
 
 Add a domain. Both `{type}` (`allow`/`deny`) and `{kind}` (`exact`/`regex`) required.
 
-| Field | Type | Required | Description |
-|-------|------|----------|--------------|
-| domain | string \| string[] | yes | One or more domains/patterns |
-| comment | string\|null | no | Optional comment |
-| groups | integer[] | no | Group IDs (default: `[0]`) |
-| enabled | boolean | no | Whether the entry is active (default: `true`) |
+| Field   | Type               | Required | Description                                   |
+| ------- | ------------------ | -------- | --------------------------------------------- |
+| domain  | string \| string[] | yes      | One or more domains/patterns                  |
+| comment | string\|null       | no       | Optional comment                              |
+| groups  | integer[]          | no       | Group IDs (default: `[0]`)                    |
+| enabled | boolean            | no       | Whether the entry is active (default: `true`) |
 
 #### PUT /domains/{type}/{kind}/{domain}
 
@@ -272,9 +291,9 @@ Batch variant: `POST /domains:batchDelete` with body `[{item, type, kind}, ...]`
 
 ### GET /network/devices
 
-| Parameter | Type | Description |
-|-----------|------|-------------|
-| max_devices | integer | Max devices to return (default: 10) |
+| Parameter     | Type    | Description                           |
+| ------------- | ------- | ------------------------------------- |
+| max_devices   | integer | Max devices to return (default: 10)   |
 | max_addresses | integer | Max addresses per device (default: 3) |
 
 **Response item:** the per-IP data lives under **`ips`**; there is no
@@ -293,7 +312,12 @@ DNS resolves it).
       "numQueries": 5563,
       "macVendor": "",
       "ips": [
-        { "ip": "172.16.1.111", "name": null, "lastSeen": 1783116660, "nameUpdated": 1783116660 }
+        {
+          "ip": "172.16.1.111",
+          "name": null,
+          "lastSeen": 1783116660,
+          "nameUpdated": 1783116660
+        }
       ]
     }
   ]
@@ -312,13 +336,13 @@ Active DHCP leases.
 
 **Response item:**
 
-| Field | Type | Description |
-|-------|------|--------------|
-| name | string | Hostname |
-| ip | string | IP address |
-| hwaddr | string | MAC address |
-| expires | integer | Expiry timestamp (0 = infinite) |
-| clientid | string | Client ID |
+| Field    | Type    | Description                     |
+| -------- | ------- | ------------------------------- |
+| name     | string  | Hostname                        |
+| ip       | string  | IP address                      |
+| hwaddr   | string  | MAC address                     |
+| expires  | integer | Expiry timestamp (0 = infinite) |
+| clientid | string  | Client ID                       |
 
 `DELETE /dhcp/leases/{ip}` removes a lease.
 
@@ -331,18 +355,18 @@ Adlists (blocklists/allowlists). `type` (`allow`/`block`) optional on GET
 
 **Response item:**
 
-| Field | Type | Description |
-|-------|------|--------------|
-| address | string | List URL |
-| enabled | boolean | Whether list is active |
-| comment | string | Optional comment |
-| type | string | `block` / `allow` |
-| groups | integer[] | Associated group IDs (default: `[0]`) |
-| number | integer | Number of entries |
-| invalid_domains | integer | Count of malformed entries skipped on last update |
-| abp_entries | integer | Count of Adblock Plus-style entries in the list |
-| date_added / date_modified / date_updated | integer | Unix timestamps |
-| status | integer | Download status (`1` = OK, `2` = OK with warnings, seen on this instance) |
+| Field                                     | Type      | Description                                                               |
+| ----------------------------------------- | --------- | ------------------------------------------------------------------------- |
+| address                                   | string    | List URL                                                                  |
+| enabled                                   | boolean   | Whether list is active                                                    |
+| comment                                   | string    | Optional comment                                                          |
+| type                                      | string    | `block` / `allow`                                                         |
+| groups                                    | integer[] | Associated group IDs (default: `[0]`)                                     |
+| number                                    | integer   | Number of entries                                                         |
+| invalid_domains                           | integer   | Count of malformed entries skipped on last update                         |
+| abp_entries                               | integer   | Count of Adblock Plus-style entries in the list                           |
+| date_added / date_modified / date_updated | integer   | Unix timestamps                                                           |
+| status                                    | integer   | Download status (`1` = OK, `2` = OK with warnings, seen on this instance) |
 
 #### POST /lists
 
@@ -350,7 +374,11 @@ Adlists (blocklists/allowlists). `type` (`allow`/`block`) optional on GET
 `POST /lists?type=block`.
 
 ```json
-{ "address": "https://example.com/blocklist.txt", "comment": "Added via API", "enabled": true }
+{
+  "address": "https://example.com/blocklist.txt",
+  "comment": "Added via API",
+  "enabled": true
+}
 ```
 
 #### PUT /lists/{list} / DELETE /lists/{list}
@@ -362,11 +390,11 @@ Update or remove an adlist. `type` is required on `DELETE` too.
 
 ### Actions
 
-| Endpoint | Description |
-|---|---|
-| `POST /action/gravity` | Re-download all adlists. Response streamed as `text/plain`. |
-| `POST /action/restartdns` | Restart the pihole-FTL DNS service. |
-| `POST /action/flush/logs` | Flush DNS logs and purge last 24h from the DB. |
+| Endpoint                     | Description                                                                              |
+| ---------------------------- | ---------------------------------------------------------------------------------------- |
+| `POST /action/gravity`       | Re-download all adlists. Response streamed as `text/plain`.                              |
+| `POST /action/restartdns`    | Restart the pihole-FTL DNS service.                                                      |
+| `POST /action/flush/logs`    | Flush DNS logs and purge last 24h from the DB.                                           |
 | `POST /action/flush/network` | Flush the network table (remove all known devices). Replaces the deprecated `flush/arp`. |
 
 ---

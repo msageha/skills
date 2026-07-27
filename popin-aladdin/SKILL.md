@@ -39,21 +39,21 @@ header/cookie; the server talks to the unit directly.
 
 ## Core operations
 
-| Task | Endpoint |
-|---|---|
-| Ceiling light on/off/brightness/color | `POST /light` |
-| Aggregated state (transport/volume/mute/URI/position) | `GET /status` |
-| Volume / mute | `GET`/`POST /volume`, `GET`/`POST /mute` |
-| Play / pause / stop / next / previous | `POST /play`, `/pause`, `/stop`, `/next`, `/previous` |
-| Seek (seconds) / play mode | `POST /seek`, `POST /play-mode` |
-| Cast a media URL to the projector | `POST /cast` |
-| Remote key input (D-pad / hardware keys) | `POST /key` |
-| Type text into focused input | `POST /keyboard` |
-| Voice command as text | `POST /voice` |
-| Device info / playback details | `GET /info`, `/transport`, `/position`, `/media`, `/protocol-info` |
-| Free memory / capture / remote ping | `POST /memory/free`, `/capture`, `/remote/ping` |
-| Raw SOAP action (escape hatch) | `POST /soap` |
-| Server health / button list | `GET /health`, `GET /remote/buttons` |
+| Task                                                  | Endpoint                                                           |
+| ----------------------------------------------------- | ------------------------------------------------------------------ |
+| Ceiling light on/off/brightness/color                 | `POST /light`                                                      |
+| Aggregated state (transport/volume/mute/URI/position) | `GET /status`                                                      |
+| Volume / mute                                         | `GET`/`POST /volume`, `GET`/`POST /mute`                           |
+| Play / pause / stop / next / previous                 | `POST /play`, `/pause`, `/stop`, `/next`, `/previous`              |
+| Seek (seconds) / play mode                            | `POST /seek`, `POST /play-mode`                                    |
+| Cast a media URL to the projector                     | `POST /cast`                                                       |
+| Remote key input (D-pad / hardware keys)              | `POST /key`                                                        |
+| Type text into focused input                          | `POST /keyboard`                                                   |
+| Voice command as text                                 | `POST /voice`                                                      |
+| Device info / playback details                        | `GET /info`, `/transport`, `/position`, `/media`, `/protocol-info` |
+| Free memory / capture / remote ping                   | `POST /memory/free`, `/capture`, `/remote/ping`                    |
+| Raw SOAP action (escape hatch)                        | `POST /soap`                                                       |
+| Server health / button list                           | `GET /health`, `GET /remote/buttons`                               |
 
 Full request/response schemas and ready-to-run curl examples: see
 [references/api-reference.md](references/api-reference.md) and
