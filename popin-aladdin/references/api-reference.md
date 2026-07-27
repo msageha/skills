@@ -16,11 +16,11 @@ Two control planes on the unit:
 
 ## Errors
 
-| Status | Meaning |
-|---|---|
+| Status    | Meaning                                                                                        |
+| --------- | ---------------------------------------------------------------------------------------------- |
 | 400 / 422 | Request validation error (invalid button/mode/URI, `/soap` Set-action without `confirm: true`) |
-| 502 | UPnP/SOAP fault from the unit — body has `detail`, `fault_code`, `upnp_error_code` |
-| 504 | Unit unreachable on the LAN (`AladdinConnectionError`) |
+| 502       | UPnP/SOAP fault from the unit — body has `detail`, `fault_code`, `upnp_error_code`             |
+| 504       | Unit unreachable on the LAN (`AladdinConnectionError`)                                         |
 
 Requests are serialized behind a server-side lock; concurrent calls queue up.
 
@@ -53,13 +53,13 @@ TCP reachability check of the proprietary control plane → `{ "ok": true }`.
 
 UPnP device description. All fields nullable.
 
-| Field | Type | Description |
-|-------|------|-------------|
-| friendly_name | string | e.g. `Aladdin 2` |
-| manufacturer / model_name / model_description | string | Renderer identity |
-| udn | string | Unique Device Name (UUID, per-unit) |
-| services | string[] | e.g. `["AVTransport", "ConnectionManager", "RenderingControl"]` |
-| description_url | string | Device description URL on the LAN |
+| Field                                         | Type     | Description                                                     |
+| --------------------------------------------- | -------- | --------------------------------------------------------------- |
+| friendly_name                                 | string   | e.g. `Aladdin 2`                                                |
+| manufacturer / model_name / model_description | string   | Renderer identity                                               |
+| udn                                           | string   | Unique Device Name (UUID, per-unit)                             |
+| services                                      | string[] | e.g. `["AVTransport", "ConnectionManager", "RenderingControl"]` |
+| description_url                               | string   | Device description URL on the LAN                               |
 
 ### GET /status
 
@@ -83,12 +83,12 @@ Aggregated playback state.
 
 Detail views behind `/status`:
 
-| Endpoint | Fields |
-|---|---|
-| `/transport` | `state`, `status`, `speed` |
-| `/position` | `track`, `track_duration(_seconds)`, `track_uri`, `track_metadata`, `rel_time(_seconds)`, `abs_time` |
-| `/media` | `nr_tracks`, `media_duration`, `current_uri(_metadata)`, `play_medium` |
-| `/protocol-info` | `{ "source": [...], "sink": [...] }` (supported formats) |
+| Endpoint         | Fields                                                                                               |
+| ---------------- | ---------------------------------------------------------------------------------------------------- |
+| `/transport`     | `state`, `status`, `speed`                                                                           |
+| `/position`      | `track`, `track_duration(_seconds)`, `track_uri`, `track_metadata`, `rel_time(_seconds)`, `abs_time` |
+| `/media`         | `nr_tracks`, `media_duration`, `current_uri(_metadata)`, `play_medium`                               |
+| `/protocol-info` | `{ "source": [...], "sink": [...] }` (supported formats)                                             |
 
 ---
 
@@ -121,13 +121,13 @@ Body: `{ "mode": ... }` — one of `NORMAL` / `REPEAT_ONE` / `REPEAT_ALL` /
 Load (and by default play) a media URL on the projector. The URL must be
 reachable from the device's LAN. Replaces the current content.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| uri | string | yes | Absolute media URL (`://` required) |
-| title | string | no | Title for the generated DIDL-Lite metadata (default `popin-aladdin-api`) |
-| upnp_class | string | no | `object.item.videoItem` (default) / `object.item.audioItem` / `object.item.imageItem` |
-| metadata | string | no | Explicit DIDL-Lite XML; auto-generated when omitted |
-| autoplay | boolean | no | Send Play right after loading (default `true`) |
+| Field      | Type    | Required | Description                                                                           |
+| ---------- | ------- | -------- | ------------------------------------------------------------------------------------- |
+| uri        | string  | yes      | Absolute media URL (`://` required)                                                   |
+| title      | string  | no       | Title for the generated DIDL-Lite metadata (default `popin-aladdin-api`)              |
+| upnp_class | string  | no       | `object.item.videoItem` (default) / `object.item.audioItem` / `object.item.imageItem` |
+| metadata   | string  | no       | Explicit DIDL-Lite XML; auto-generated when omitted                                   |
+| autoplay   | boolean | no       | Send Play right after loading (default `true`)                                        |
 
 Response: `{ "uri": ..., "autoplay": true }`
 
@@ -139,10 +139,10 @@ Response: `{ "uri": ..., "autoplay": true }`
 
 Ceiling light operation.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| button | enum | yes | `switch` `brighter` `darker` `cooler` `warmer` `full` `night` `on` `off` `eco` `sleep` |
-| repeat | integer | no | Press N times, 1..50 (default 1) — for stepwise `brighter`/`darker`/`cooler`/`warmer` |
+| Field  | Type    | Required | Description                                                                            |
+| ------ | ------- | -------- | -------------------------------------------------------------------------------------- |
+| button | enum    | yes      | `switch` `brighter` `darker` `cooler` `warmer` `full` `night` `on` `off` `eco` `sleep` |
+| repeat | integer | no       | Press N times, 1..50 (default 1) — for stepwise `brighter`/`darker`/`cooler`/`warmer`  |
 
 Button semantics: `on`/`off` explicit states, `switch` toggles, `full` max
 brightness, `night`/`eco`/`sleep` preset scenes, `brighter`/`darker` one
@@ -178,12 +178,12 @@ Raw UPnP SOAP passthrough. Get-actions are treated as read-only; any other
 action (Play/Set*/…) **requires `confirm: true`** and can change device state
 — prefer the typed endpoints above.
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| service | string | yes | `AVTransport` / `RenderingControl` / `ConnectionManager` |
-| action | string | yes | SOAP action name |
-| args | object | no | Action arguments (most need `"InstanceID": 0`) |
-| confirm | boolean | no* | Required `true` unless the action is in the read-only list |
+| Field   | Type    | Required | Description                                                |
+| ------- | ------- | -------- | ---------------------------------------------------------- |
+| service | string  | yes      | `AVTransport` / `RenderingControl` / `ConnectionManager`   |
+| action  | string  | yes      | SOAP action name                                           |
+| args    | object  | no       | Action arguments (most need `"InstanceID": 0`)             |
+| confirm | boolean | no*      | Required `true` unless the action is in the read-only list |
 
 Read-only (no `confirm` needed): `GetTransportInfo`, `GetPositionInfo`,
 `GetMediaInfo`, `GetTransportSettings`, `GetCurrentTransportActions`,

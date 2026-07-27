@@ -26,20 +26,20 @@ endpoints accept `multipart/form-data` and return the processed file directly.
 
 ## Core operations
 
-| Task | Endpoint |
-|---|---|
-| PDF → Markdown/Text/Word/HTML | `POST /convert/pdf/{markdown,text,word,html}` |
-| PDF → Images | `POST /convert/pdf/img` |
-| Markdown/HTML/URL/Office → PDF | `POST /convert/{markdown,html,url,file}/pdf` |
-| Images → PDF | `POST /convert/img/pdf` |
-| Merge / Split / Remove / Rotate / Rearrange pages | `POST /general/{merge-pdfs,split-pages,remove-pages,rotate-pdf,rearrange-pages}` |
-| Compress | `POST /misc/compress-pdf` |
-| OCR | `POST /misc/ocr-pdf` |
-| Repair / Flatten | `POST /misc/{repair,flatten}` |
-| Extract images / Add page numbers / Add stamp / Update metadata | `POST /misc/{extract-images,add-page-numbers,add-stamp,update-metadata}` |
-| Add/remove password, watermark | `POST /security/{add-password,remove-password,add-watermark}` |
-| Page count / basic info / properties | `POST /analysis/{page-count,basic-info,document-properties}` |
-| Server status | `GET /info/status` |
+| Task                                                            | Endpoint                                                                         |
+| --------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| PDF → Markdown/Text/Word/HTML                                   | `POST /convert/pdf/{markdown,text,word,html}`                                    |
+| PDF → Images                                                    | `POST /convert/pdf/img`                                                          |
+| Markdown/HTML/URL/Office → PDF                                  | `POST /convert/{markdown,html,url,file}/pdf`                                     |
+| Images → PDF                                                    | `POST /convert/img/pdf`                                                          |
+| Merge / Split / Remove / Rotate / Rearrange pages               | `POST /general/{merge-pdfs,split-pages,remove-pages,rotate-pdf,rearrange-pages}` |
+| Compress                                                        | `POST /misc/compress-pdf`                                                        |
+| OCR                                                             | `POST /misc/ocr-pdf`                                                             |
+| Repair / Flatten                                                | `POST /misc/{repair,flatten}`                                                    |
+| Extract images / Add page numbers / Add stamp / Update metadata | `POST /misc/{extract-images,add-page-numbers,add-stamp,update-metadata}`         |
+| Add/remove password, watermark                                  | `POST /security/{add-password,remove-password,add-watermark}`                    |
+| Page count / basic info / properties                            | `POST /analysis/{page-count,basic-info,document-properties}`                     |
+| Server status                                                   | `GET /info/status`                                                               |
 
 Full field lists, defaults, and ready-to-run curl examples: see
 [references/api-reference.md](references/api-reference.md) and

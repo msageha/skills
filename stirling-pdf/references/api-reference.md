@@ -19,10 +19,10 @@ header."` — pass the key via the `X-API-KEY` header in that case.
 
 ## Common Parameters
 
-| Field | Type | Description |
-|-------|------|-------------|
+| Field     | Type   | Description                                            |
+| --------- | ------ | ------------------------------------------------------ |
 | fileInput | binary | The input file (upload via `-F "fileInput=@file.pdf"`) |
-| fileId | string | Server-side file ID (alternative to fileInput) |
+| fileId    | string | Server-side file ID (alternative to fileInput)         |
 
 ### Page Selection (`pageNumbers`)
 
@@ -44,38 +44,38 @@ Convert PDF to Markdown. Field: `fileInput` (required). No extra params.
 
 Convert PDF to plain text or RTF.
 
-| Field | Required | Description |
-|-------|----------|-------------|
-| fileInput | yes | Input PDF |
-| outputFormat | yes | `txt` or `rtf` |
+| Field        | Required | Description    |
+| ------------ | -------- | -------------- |
+| fileInput    | yes      | Input PDF      |
+| outputFormat | yes      | `txt` or `rtf` |
 
 ### POST /api/v1/convert/pdf/img
 
 Convert PDF pages to images.
 
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| fileInput | yes | — | Input PDF |
-| pageNumbers | yes | `all` | Pages to convert |
-| imageFormat | yes | `png` | `png` / `jpeg` / `jpg` / `gif` / `webp` |
-| singleOrMultiple | yes | `multiple` | `single` (all pages in one image) / `multiple` |
-| colorType | yes | `color` | `color` / `greyscale` / `blackwhite` |
-| dpi | yes | `300` | Resolution in DPI |
-| includeAnnotations | no | `false` | Include annotations |
+| Field              | Required | Default    | Description                                    |
+| ------------------ | -------- | ---------- | ---------------------------------------------- |
+| fileInput          | yes      | —          | Input PDF                                      |
+| pageNumbers        | yes      | `all`      | Pages to convert                               |
+| imageFormat        | yes      | `png`      | `png` / `jpeg` / `jpg` / `gif` / `webp`        |
+| singleOrMultiple   | yes      | `multiple` | `single` (all pages in one image) / `multiple` |
+| colorType          | yes      | `color`    | `color` / `greyscale` / `blackwhite`           |
+| dpi                | yes      | `300`      | Resolution in DPI                              |
+| includeAnnotations | no       | `false`    | Include annotations                            |
 
 **Response:** Image file or ZIP (if multiple).
 
 ### Other conversions
 
-| Endpoint | Key fields |
-|---|---|
-| `POST /convert/pdf/word` | `fileInput` |
-| `POST /convert/pdf/html` | `fileInput` |
-| `POST /convert/markdown/pdf` | `fileInput` |
-| `POST /convert/html/pdf` | `fileInput`, `zoom` (default `1`) |
-| `POST /convert/url/pdf` | `urlInput` |
-| `POST /convert/img/pdf` | `fileInput` (multiple), `fitOption` (`fillPage`/`fitDocumentToImage`/`maintainAspectRatio`, default `fillPage`), `colorType`, `autoRotate` |
-| `POST /convert/file/pdf` | `fileInput` — Office→PDF via LibreOffice (.doc, .docx, .xls, .xlsx, .ppt, .pptx, .odt, .ods, .odp, .csv, etc.) |
+| Endpoint                     | Key fields                                                                                                                                 |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /convert/pdf/word`     | `fileInput`                                                                                                                                |
+| `POST /convert/pdf/html`     | `fileInput`                                                                                                                                |
+| `POST /convert/markdown/pdf` | `fileInput`                                                                                                                                |
+| `POST /convert/html/pdf`     | `fileInput`, `zoom` (default `1`)                                                                                                          |
+| `POST /convert/url/pdf`      | `urlInput`                                                                                                                                 |
+| `POST /convert/img/pdf`      | `fileInput` (multiple), `fitOption` (`fillPage`/`fitDocumentToImage`/`maintainAspectRatio`, default `fillPage`), `colorType`, `autoRotate` |
+| `POST /convert/file/pdf`     | `fileInput` — Office→PDF via LibreOffice (.doc, .docx, .xls, .xlsx, .ppt, .pptx, .odt, .ods, .odp, .csv, etc.)                             |
 
 Other conversion endpoints, not detailed here but present in the API:
 `/convert/pdf/pdfa`, `/convert/pdf/presentation`, `/convert/pdf/xml`,
@@ -89,13 +89,13 @@ and a job-based `/convert/pdf/text-editor` family.
 
 ## Page Operations
 
-| Endpoint | Key fields |
-|---|---|
-| `POST /general/merge-pdfs` | `fileInput` (multiple), `sortType` (`orderProvided`/`byFileName`/`byDateModified`/`byDateCreated`/`byPDFTitle`, default `orderProvided`), `removeCertSign` (default `true`), `generateToc` (default `false`) |
-| `POST /general/split-pages` | `fileInput`, `pageNumbers` (default `all`) → ZIP |
-| `POST /general/remove-pages` | `fileInput`, `pageNumbers` (required) |
-| `POST /general/rotate-pdf` | `fileInput`, `angle` (`0`/`90`/`180`/`270`, default `90`) |
-| `POST /general/rearrange-pages` | `fileInput`, `pageNumbers` (new order, e.g. `3,1,2,4`) |
+| Endpoint                        | Key fields                                                                                                                                                                                                   |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /general/merge-pdfs`      | `fileInput` (multiple), `sortType` (`orderProvided`/`byFileName`/`byDateModified`/`byDateCreated`/`byPDFTitle`, default `orderProvided`), `removeCertSign` (default `true`), `generateToc` (default `false`) |
+| `POST /general/split-pages`     | `fileInput`, `pageNumbers` (default `all`) → ZIP                                                                                                                                                             |
+| `POST /general/remove-pages`    | `fileInput`, `pageNumbers` (required)                                                                                                                                                                        |
+| `POST /general/rotate-pdf`      | `fileInput`, `angle` (`0`/`90`/`180`/`270`, default `90`)                                                                                                                                                    |
+| `POST /general/rearrange-pages` | `fileInput`, `pageNumbers` (new order, e.g. `3,1,2,4`)                                                                                                                                                       |
 
 Other page-operation endpoints: `/general/split-by-size-or-count`,
 `/general/split-pdf-by-chapters` (note the `pdf-` infix), `/general/pdf-to-single-page`,
@@ -111,29 +111,29 @@ Other page-operation endpoints: `/general/split-by-size-or-count`,
 
 ### POST /api/v1/misc/compress-pdf
 
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| fileInput | yes | — | Input PDF |
-| optimizeLevel | yes | `5` | 1-9 (higher = more compression, lower quality) |
-| expectedOutputSize | yes | `25KB` | Target size (e.g. `100MB`, `500KB`) |
-| linearize | yes | `false` | Optimize for web viewing |
-| normalize | yes | `false` | Normalize content |
-| grayscale | yes | `false` | Convert to grayscale |
-| lineArt / lineArtThreshold / lineArtEdgeLevel | no | — | Line-art-aware compression tuning (added in v2.x) |
+| Field                                         | Required | Default | Description                                       |
+| --------------------------------------------- | -------- | ------- | ------------------------------------------------- |
+| fileInput                                     | yes      | —       | Input PDF                                         |
+| optimizeLevel                                 | yes      | `5`     | 1-9 (higher = more compression, lower quality)    |
+| expectedOutputSize                            | yes      | `25KB`  | Target size (e.g. `100MB`, `500KB`)               |
+| linearize                                     | yes      | `false` | Optimize for web viewing                          |
+| normalize                                     | yes      | `false` | Normalize content                                 |
+| grayscale                                     | yes      | `false` | Convert to grayscale                              |
+| lineArt / lineArtThreshold / lineArtEdgeLevel | no       | —       | Line-art-aware compression tuning (added in v2.x) |
 
 ### POST /api/v1/misc/ocr-pdf
 
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| fileInput | yes | — | Input PDF |
-| languages | yes | `["eng"]` | Language codes — **not a fixed list**: derived at runtime from whichever Tesseract `.traineddata` files are present in the deployed image (varies by full/lite/ultra-lite variant) |
-| ocrType | yes | — | `skip-text` (skip existing text) / `force-ocr` (redo all) / `Normal` |
-| ocrRenderType | yes | `hocr` | `hocr` (overlay text) / `sandwich` (hidden text layer) — server rejects any other value |
-| sidecar | no | `false` | Output text as sidecar file |
-| deskew | no | `false` | Deskew skewed pages |
-| clean | no | `false` | Clean input before OCR |
-| cleanFinal | no | `false` | Clean final output |
-| removeImagesAfter | no | `false` | Remove images from output |
+| Field             | Required | Default   | Description                                                                                                                                                                        |
+| ----------------- | -------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| fileInput         | yes      | —         | Input PDF                                                                                                                                                                          |
+| languages         | yes      | `["eng"]` | Language codes — **not a fixed list**: derived at runtime from whichever Tesseract `.traineddata` files are present in the deployed image (varies by full/lite/ultra-lite variant) |
+| ocrType           | yes      | —         | `skip-text` (skip existing text) / `force-ocr` (redo all) / `Normal`                                                                                                               |
+| ocrRenderType     | yes      | `hocr`    | `hocr` (overlay text) / `sandwich` (hidden text layer) — server rejects any other value                                                                                            |
+| sidecar           | no       | `false`   | Output text as sidecar file                                                                                                                                                        |
+| deskew            | no       | `false`   | Deskew skewed pages                                                                                                                                                                |
+| clean             | no       | `false`   | Clean input before OCR                                                                                                                                                             |
+| cleanFinal        | no       | `false`   | Clean final output                                                                                                                                                                 |
+| removeImagesAfter | no       | `false`   | Remove images from output                                                                                                                                                          |
 
 ### POST /api/v1/misc/repair / POST /api/v1/misc/flatten
 
@@ -153,65 +153,65 @@ Other misc endpoints: `/misc/remove-blanks`, `/misc/auto-rename`,
 
 ### POST /api/v1/misc/extract-images
 
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| fileInput | yes | — | Input PDF |
-| format | yes | `png` | `png` / `jpeg` / `gif` |
+| Field     | Required | Default | Description            |
+| --------- | -------- | ------- | ---------------------- |
+| fileInput | yes      | —       | Input PDF              |
+| format    | yes      | `png`   | `png` / `jpeg` / `gif` |
 
 `allowDuplicates` **removed** — it's commented-out dead code in the current
 source (`PDFExtractImagesRequest.java`), do not send it.
 
 ### POST /api/v1/misc/add-page-numbers
 
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| fileInput | yes | — | Input PDF |
-| pageNumbers | yes | `all` | Pages to number |
-| position | yes | `8` | 1-9 grid position (8 = bottom-center) |
-| fontSize | yes | `12` | Font size |
-| fontType | yes | — | `helvetica` / `courier` / `times` |
-| fontColor | no | `#000000` | Hex color |
-| startingNumber | yes | `1` | Starting page number |
-| customText | no | `{n}` | `{n}` = page, `{total}` = total pages, `{filename}` = filename |
-| customMargin | no | `medium` | `small` / `medium` / `large` / `x-large` |
-| pagesToNumber | no | `all` | Which pages get numbers |
+| Field          | Required | Default   | Description                                                    |
+| -------------- | -------- | --------- | -------------------------------------------------------------- |
+| fileInput      | yes      | —         | Input PDF                                                      |
+| pageNumbers    | yes      | `all`     | Pages to number                                                |
+| position       | yes      | `8`       | 1-9 grid position (8 = bottom-center)                          |
+| fontSize       | yes      | `12`      | Font size                                                      |
+| fontType       | yes      | —         | `helvetica` / `courier` / `times`                              |
+| fontColor      | no       | `#000000` | Hex color                                                      |
+| startingNumber | yes      | `1`       | Starting page number                                           |
+| customText     | no       | `{n}`     | `{n}` = page, `{total}` = total pages, `{filename}` = filename |
+| customMargin   | no       | `medium`  | `small` / `medium` / `large` / `x-large`                       |
+| pagesToNumber  | no       | `all`     | Which pages get numbers                                        |
 
 Position grid: `7=top-left 8=top-center 9=top-right / 4=mid-left 5=mid-center 6=mid-right / 1=bot-left 2=bot-center 3=bot-right`.
 
 ### POST /api/v1/misc/add-stamp
 
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| fileInput | yes | — | Input PDF |
-| pageNumbers | yes | `all` | Target pages |
-| stampType | yes | — | `text` or `image` |
-| stampText | no | — | Stamp text (for type=text) |
-| stampImage | no | — | Stamp image (for type=image) |
-| alphabet | no | `roman` | `roman` / `arabic` / `japanese` / `korean` / `chinese` |
-| fontSize | yes | `30` | Font/image size |
-| rotation | yes | `0` | Rotation in degrees |
-| opacity | yes | `0.5` | Opacity (0.0-1.0) |
-| position | yes | `5` | 1-9 grid position |
-| customColor | no | `#d3d3d3` | Stamp color |
+| Field       | Required | Default   | Description                                            |
+| ----------- | -------- | --------- | ------------------------------------------------------ |
+| fileInput   | yes      | —         | Input PDF                                              |
+| pageNumbers | yes      | `all`     | Target pages                                           |
+| stampType   | yes      | —         | `text` or `image`                                      |
+| stampText   | no       | —         | Stamp text (for type=text)                             |
+| stampImage  | no       | —         | Stamp image (for type=image)                           |
+| alphabet    | no       | `roman`   | `roman` / `arabic` / `japanese` / `korean` / `chinese` |
+| fontSize    | yes      | `30`      | Font/image size                                        |
+| rotation    | yes      | `0`       | Rotation in degrees                                    |
+| opacity     | yes      | `0.5`     | Opacity (0.0-1.0)                                      |
+| position    | yes      | `5`       | 1-9 grid position                                      |
+| customColor | no       | `#d3d3d3` | Stamp color                                            |
 
 ### POST /api/v1/misc/update-metadata
 
-| Field | Required | Default | Description |
-|-------|----------|---------|-------------|
-| fileInput | yes | — | Input PDF |
-| deleteAll | yes | `false` | Delete all metadata first |
-| title / author / subject / keywords / creator / producer | no | — | Metadata fields |
-| creationDate / modificationDate | no | — | Format: `yyyy/MM/dd HH:mm:ss` |
+| Field                                                    | Required | Default | Description                   |
+| -------------------------------------------------------- | -------- | ------- | ----------------------------- |
+| fileInput                                                | yes      | —       | Input PDF                     |
+| deleteAll                                                | yes      | `false` | Delete all metadata first     |
+| title / author / subject / keywords / creator / producer | no       | —       | Metadata fields               |
+| creationDate / modificationDate                          | no       | —       | Format: `yyyy/MM/dd HH:mm:ss` |
 
 ---
 
 ## Security
 
-| Endpoint | Key fields |
-|---|---|
-| `POST /security/add-password` | `fileInput`, `password`, `ownerPassword`, `keyLength` (`40`/`128`/`256`, default `256`), `preventPrinting`, `preventModify`, `preventExtractContent`, `preventFillInForm`, `preventAssembly`, `preventModifyAnnotations` |
-| `POST /security/remove-password` | `fileInput`, `password` (required) |
-| `POST /security/add-watermark` | `fileInput`, `watermarkType` (`text`/`image`), `watermarkText`/`watermarkImage`, `alphabet`, `fontSize`, `rotation`, `opacity`, `widthSpacer`, `heightSpacer`, `customColor`, `convertPDFToImage` |
+| Endpoint                         | Key fields                                                                                                                                                                                                               |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `POST /security/add-password`    | `fileInput`, `password`, `ownerPassword`, `keyLength` (`40`/`128`/`256`, default `256`), `preventPrinting`, `preventModify`, `preventExtractContent`, `preventFillInForm`, `preventAssembly`, `preventModifyAnnotations` |
+| `POST /security/remove-password` | `fileInput`, `password` (required)                                                                                                                                                                                       |
+| `POST /security/add-watermark`   | `fileInput`, `watermarkType` (`text`/`image`), `watermarkText`/`watermarkImage`, `alphabet`, `fontSize`, `rotation`, `opacity`, `widthSpacer`, `heightSpacer`, `customColor`, `convertPDFToImage`                        |
 
 Other security endpoints: `/security/cert-sign` (certificate signing),
 `/security/redact` + `/security/auto-redact` + `/security/redact-execute`
@@ -226,16 +226,16 @@ PDF-compare feature.
 
 ## Analysis
 
-| Endpoint | Response |
-|---|---|
-| `POST /analysis/page-count` | `{ "pageCount": 1 }` — a JSON object, **not** a bare integer |
-| `POST /analysis/basic-info` | `{ "pageCount": 1, "pdfVersion": 1.4, "fileSize": 254 }` |
-| `POST /analysis/document-properties` | Title, author, creator, dates, etc. |
-| `POST /analysis/security-info` | Security/encryption information |
-| `POST /analysis/font-info` | Embedded font information |
-| `POST /analysis/form-fields` | Form field information |
-| `POST /analysis/page-dimensions` | Per-page dimensions |
-| `POST /analysis/annotation-info` | Annotation details |
+| Endpoint                             | Response                                                     |
+| ------------------------------------ | ------------------------------------------------------------ |
+| `POST /analysis/page-count`          | `{ "pageCount": 1 }` — a JSON object, **not** a bare integer |
+| `POST /analysis/basic-info`          | `{ "pageCount": 1, "pdfVersion": 1.4, "fileSize": 254 }`     |
+| `POST /analysis/document-properties` | Title, author, creator, dates, etc.                          |
+| `POST /analysis/security-info`       | Security/encryption information                              |
+| `POST /analysis/font-info`           | Embedded font information                                    |
+| `POST /analysis/form-fields`         | Form field information                                       |
+| `POST /analysis/page-dimensions`     | Per-page dimensions                                          |
+| `POST /analysis/annotation-info`     | Annotation details                                           |
 
 ---
 

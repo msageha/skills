@@ -1,2 +1,21 @@
-.DS_Store
-.claude/settings.local.json
+# ホワイトリスト方式: すべて無視し、`!` で許可したものだけを追跡する
+*
+
+# ルート直下のファイル
+!/.gitignore
+!/AGENTS.md
+!/README.md
+!/LICENSE
+!/mise.toml
+!/mise.lock
+!/.pre-commit-config.yaml
+!/dprint.json
+!/renovate.json
+
+# GitHub Actions
+!/.github/
+!/.github/**
+
+# skill ディレクトリ (SKILL.md を持つ各ディレクトリを丸ごと許可)
+!/*/
+!/*/**

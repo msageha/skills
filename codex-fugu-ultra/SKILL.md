@@ -21,7 +21,7 @@ Claude Code から codex MCP サーバー（ツール `mcp__codex__codex`）を�
 {
   "prompt": "<fugu-ultra に渡す最初の指示>",
   "model": "fugu-ultra",
-  "cwd": "/path/to/trusted/project",   // 信頼済みプロジェクト（後述）を指定
+  "cwd": "/path/to/trusted/project", // 信頼済みプロジェクト（後述）を指定
   "config": {
     "model_provider": "sakana",
     "model_reasoning_effort": "high",

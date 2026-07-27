@@ -31,7 +31,7 @@ codex --profile fusion
 {
   "prompt": "<fusion に渡す最初の指示>",
   "model": "openrouter/fusion",
-  "cwd": "/path/to/trusted/project",   // 信頼済みプロジェクト（後述）を指定
+  "cwd": "/path/to/trusted/project", // 信頼済みプロジェクト（後述）を指定
   "config": {
     "model_provider": "openrouter",
     "model_reasoning_effort": "high",

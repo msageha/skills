@@ -22,6 +22,45 @@
 
 各ディレクトリを `~/.claude/skills/` 以下に配置するか、プロジェクトの `.claude/skills/` に配置すると Claude Code から利用できる。詳細は各 skill の `SKILL.md` を参照。
 
+## タスク
+
+タスクは `mise run <task>` で実行する。`mise.toml` の `[tasks]` を変更した場合は
+`mise run docs` を実行し、以下の一覧を更新する (pre-commit hook からも自動実行される)。
+
+<!-- dprint-ignore-start -->
+<!-- mise-tasks -->
+## `docs`
+
+- **Usage**: `docs`
+
+Sync the task list embedded in README.md with mise.toml
+
+## `install-agy`
+
+- **Usage**: `install-agy`
+
+Symlink all skills into ~/.gemini/antigravity-cli/skills
+
+## `install-claude`
+
+- **Usage**: `install-claude`
+
+Symlink all skills into ~/.claude/skills
+
+## `install-codex`
+
+- **Usage**: `install-codex`
+
+Symlink all skills into ~/.codex/skills
+
+## `install-openclaw`
+
+- **Usage**: `install-openclaw`
+
+Copy all skills into ~/.openclaw/workspace/skills (its skill loader doesn't follow symlinks)
+<!-- /mise-tasks -->
+<!-- dprint-ignore-end -->
+
 ## License
 
 [MIT](LICENSE)
