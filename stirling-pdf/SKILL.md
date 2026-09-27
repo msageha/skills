@@ -7,19 +7,23 @@ metadata:
     requires:
       bins:
         - curl
+        - jq
 ---
 
 # Stirling PDF
 
-Base URL: `https://pdf-tools.msageha.net/api/v1` (Stirling PDF v2.14.0). All
-endpoints accept `multipart/form-data` and return the processed file directly.
+Base URL: `https://pdf-tools.msageha.net/api/v1` (Stirling PDF v2.14.0).
+File-processing endpoints accept `multipart/form-data` and return the processed
+file directly; `/analysis/*` and `/info/status` return JSON.
 
 ## Key facts
 
 - Auth is deployment-dependent: requests to this instance don't need an
   `X-API-KEY` header, but if login is ever enabled, add one or requests get a
   401.
-- Response is the processed file (binary); save with `-o output.ext`.
+- Response is the processed file (binary); save with `-o output.ext` and call
+  `curl -sSf` so an HTTP error leaves no output file (curl exits 22 and reports
+  the status on stderr; rerun without `-f`/`-o` to read the error JSON).
 - `pageNumbers` supports ranges: `1,3,5-9`, `all`, or expressions like `2n+1`.
 - Large files may take time; inform the user before starting.
 - Confirm before destructive operations (removing pages, adding passwords).
@@ -47,6 +51,6 @@ Full field lists, defaults, and ready-to-run curl examples: see
 
 ## Obsidian Integration
 
-To add a PDF to the Obsidian vault as a note: convert PDF → Markdown, then
-`obsidian-cli create "Notes/<name>" --content "$(cat output.md)"`. See
-references/commands.md for the full recipe.
+To add a PDF to the Obsidian vault as a note: convert PDF → Markdown, then (only
+if the conversion succeeded) `obsidian-cli create "Notes/<name>" --content
+"$(cat output.md)"`. See references/commands.md for the full recipe.

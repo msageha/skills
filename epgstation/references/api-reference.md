@@ -297,7 +297,9 @@ OpenAPI Version: 3.0.1 / EPGStation v2.10.0
 | type      | string  | no       | `all` / `normal` / `conflict` / `skip` / `overlap` |
 | keyword   | string  | no       | キーワード検索                                     |
 
-**Response:** `Rules` — `{ "rules": [...], "total": 5 }`
+**Response:** `Rules` — `{ "rules": [...], "total": 5 }`. Each rule is the
+`AddRuleOption` body (see `POST /rules`) plus `id` and `reservesCnt` (number of
+reservations the rule currently produces).
 
 ---
 
@@ -595,12 +597,4 @@ Not documented in detail here to keep this skill lean, but worth knowing they ex
 ### UnixtimeMS
 
 All timestamps are **Unix time in milliseconds** throughout the entire v2 API.
-To convert:
-
-```bash
-# JS: Date to UnixtimeMS
-node -e "console.log(new Date('2024-03-02T21:00:00+09:00').getTime())"
-
-# jq: UnixtimeMS to readable (JST)
-jq '.startAt / 1000 | strftime("%Y-%m-%d %H:%M")'
-```
+Conversion recipes: [commands.md](commands.md#unixtimems-conversion).

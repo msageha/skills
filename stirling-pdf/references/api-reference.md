@@ -1,7 +1,7 @@
 # Stirling PDF API Reference
 
-Base URL: `https://pdf-tools.msageha.net`
-**Stirling PDF v2.14.0**. Base path is `/api/v1` — no `/api/v2` exists.
+Base URL: `https://pdf-tools.msageha.net/api/v1` (**Stirling PDF v2.14.0**;
+no `/api/v2` exists). Paths below are relative to it.
 All processing endpoints accept `multipart/form-data` and return the
 processed file as a binary response.
 
@@ -36,11 +36,11 @@ header."` — pass the key via the `X-API-KEY` header in that case.
 
 ## Conversion Endpoints
 
-### POST /api/v1/convert/pdf/markdown
+### POST /convert/pdf/markdown
 
 Convert PDF to Markdown. Field: `fileInput` (required). No extra params.
 
-### POST /api/v1/convert/pdf/text
+### POST /convert/pdf/text
 
 Convert PDF to plain text or RTF.
 
@@ -49,7 +49,7 @@ Convert PDF to plain text or RTF.
 | fileInput    | yes      | Input PDF      |
 | outputFormat | yes      | `txt` or `rtf` |
 
-### POST /api/v1/convert/pdf/img
+### POST /convert/pdf/img
 
 Convert PDF pages to images.
 
@@ -109,7 +109,7 @@ Other page-operation endpoints: `/general/split-by-size-or-count`,
 
 ## Optimization & Repair
 
-### POST /api/v1/misc/compress-pdf
+### POST /misc/compress-pdf
 
 | Field                                         | Required | Default | Description                                       |
 | --------------------------------------------- | -------- | ------- | ------------------------------------------------- |
@@ -121,7 +121,7 @@ Other page-operation endpoints: `/general/split-by-size-or-count`,
 | grayscale                                     | yes      | `false` | Convert to grayscale                              |
 | lineArt / lineArtThreshold / lineArtEdgeLevel | no       | —       | Line-art-aware compression tuning (added in v2.x) |
 
-### POST /api/v1/misc/ocr-pdf
+### POST /misc/ocr-pdf
 
 | Field             | Required | Default   | Description                                                                                                                                                                        |
 | ----------------- | -------- | --------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -135,7 +135,7 @@ Other page-operation endpoints: `/general/split-by-size-or-count`,
 | cleanFinal        | no       | `false`   | Clean final output                                                                                                                                                                 |
 | removeImagesAfter | no       | `false`   | Remove images from output                                                                                                                                                          |
 
-### POST /api/v1/misc/repair / POST /api/v1/misc/flatten
+### POST /misc/repair / POST /misc/flatten
 
 `repair`: `fileInput` only. `flatten`: `fileInput`, `flattenOnlyForms` (`true`
 = forms only, `false` = full page rasterize, default `false`).
@@ -151,7 +151,7 @@ Other misc endpoints: `/misc/remove-blanks`, `/misc/auto-rename`,
 
 ## Annotations & Metadata
 
-### POST /api/v1/misc/extract-images
+### POST /misc/extract-images
 
 | Field     | Required | Default | Description            |
 | --------- | -------- | ------- | ---------------------- |
@@ -161,7 +161,7 @@ Other misc endpoints: `/misc/remove-blanks`, `/misc/auto-rename`,
 `allowDuplicates` **removed** — it's commented-out dead code in the current
 source (`PDFExtractImagesRequest.java`), do not send it.
 
-### POST /api/v1/misc/add-page-numbers
+### POST /misc/add-page-numbers
 
 | Field          | Required | Default   | Description                                                    |
 | -------------- | -------- | --------- | -------------------------------------------------------------- |
@@ -176,25 +176,25 @@ source (`PDFExtractImagesRequest.java`), do not send it.
 | customMargin   | no       | `medium`  | `small` / `medium` / `large` / `x-large`                       |
 | pagesToNumber  | no       | `all`     | Which pages get numbers                                        |
 
-Position grid: `7=top-left 8=top-center 9=top-right / 4=mid-left 5=mid-center 6=mid-right / 1=bot-left 2=bot-center 3=bot-right`.
+Position grid: `1=top-left 2=top-center 3=top-right / 4=mid-left 5=mid-center 6=mid-right / 7=bot-left 8=bot-center 9=bot-right`.
 
-### POST /api/v1/misc/add-stamp
+### POST /misc/add-stamp
 
-| Field       | Required | Default   | Description                                            |
-| ----------- | -------- | --------- | ------------------------------------------------------ |
-| fileInput   | yes      | —         | Input PDF                                              |
-| pageNumbers | yes      | `all`     | Target pages                                           |
-| stampType   | yes      | —         | `text` or `image`                                      |
-| stampText   | no       | —         | Stamp text (for type=text)                             |
-| stampImage  | no       | —         | Stamp image (for type=image)                           |
-| alphabet    | no       | `roman`   | `roman` / `arabic` / `japanese` / `korean` / `chinese` |
-| fontSize    | yes      | `30`      | Font/image size                                        |
-| rotation    | yes      | `0`       | Rotation in degrees                                    |
-| opacity     | yes      | `0.5`     | Opacity (0.0-1.0)                                      |
-| position    | yes      | `5`       | 1-9 grid position                                      |
-| customColor | no       | `#d3d3d3` | Stamp color                                            |
+| Field       | Required | Default   | Description                                                                                                                                               |
+| ----------- | -------- | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| fileInput   | yes      | —         | Input PDF                                                                                                                                                 |
+| pageNumbers | yes      | `all`     | Target pages                                                                                                                                              |
+| stampType   | yes      | —         | `text` or `image`                                                                                                                                         |
+| stampText   | no       | —         | Stamp text (for type=text)                                                                                                                                |
+| stampImage  | no       | —         | Stamp image (for type=image)                                                                                                                              |
+| alphabet    | no       | `roman`   | `roman` / `arabic` / `japanese` / `korean` / `chinese`                                                                                                    |
+| fontSize    | yes      | `30`      | Font/image size                                                                                                                                           |
+| rotation    | yes      | `0`       | Rotation in degrees                                                                                                                                       |
+| opacity     | yes      | `0.5`     | Opacity (0.0-1.0)                                                                                                                                         |
+| position    | yes      | `5`       | 1-9 grid, same as add-page-numbers (1 = top-left, 8 = bottom-center; the OpenAPI description says the reverse, but StampController places 1-3 at the top) |
+| customColor | no       | `#d3d3d3` | Stamp color                                                                                                                                               |
 
-### POST /api/v1/misc/update-metadata
+### POST /misc/update-metadata
 
 | Field                                                    | Required | Default | Description                   |
 | -------------------------------------------------------- | -------- | ------- | ----------------------------- |
@@ -245,10 +245,8 @@ PDF-compare feature.
 { "version": "2.14.0", "status": "UP" }
 ```
 
-`GET /api/v1/info/status` and `GET /api/v1/info/health` (mirrors `/status`)
-return the JSON above. **`GET /api/v1/info/uptime` returns plain text, not
-JSON** (e.g. `0d 8h 56m 18s`). Metrics endpoints (`/load`, `/requests`,
-`/wau`, etc.) exist but aren't documented here.
+`GET /info/status` and `GET /info/health` (mirrors `/status`) return the JSON
+above. **`GET /info/uptime` returns plain text, not JSON** (e.g. `0d 8h 56m 18s`).
 
 ---
 

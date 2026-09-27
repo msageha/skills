@@ -12,6 +12,9 @@ curl -s "https://popin-aladdin.msageha.net/api/info" | jq .
 
 # Proprietary control plane reachable?
 curl -s -X POST "https://popin-aladdin.msageha.net/api/remote/ping" | jq .
+
+# Light / remote button names accepted by /light and /key
+curl -s "https://popin-aladdin.msageha.net/api/remote/buttons" | jq .
 ```
 
 ## Ceiling Light
@@ -41,15 +44,20 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/light" \
 ```bash
 curl -s "https://popin-aladdin.msageha.net/api/status" | jq .
 
-# Details
+# Position and media details
 curl -s "https://popin-aladdin.msageha.net/api/position" | jq .
 curl -s "https://popin-aladdin.msageha.net/api/media" | jq .
+
+# Transport state / supported protocols
+curl -s "https://popin-aladdin.msageha.net/api/transport" | jq .
+curl -s "https://popin-aladdin.msageha.net/api/protocol-info" | jq .
 ```
 
 ## Volume / Mute
 
 ```bash
 curl -s "https://popin-aladdin.msageha.net/api/volume" | jq .
+curl -s "https://popin-aladdin.msageha.net/api/mute" | jq .
 
 curl -s -X POST "https://popin-aladdin.msageha.net/api/volume" \
   -H "Content-Type: application/json" -d '{"volume": 40}' | jq .
@@ -64,6 +72,8 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/mute" \
 curl -s -X POST "https://popin-aladdin.msageha.net/api/play" | jq .
 curl -s -X POST "https://popin-aladdin.msageha.net/api/pause" | jq .
 curl -s -X POST "https://popin-aladdin.msageha.net/api/stop" | jq .
+curl -s -X POST "https://popin-aladdin.msageha.net/api/next" | jq .
+curl -s -X POST "https://popin-aladdin.msageha.net/api/previous" | jq .
 
 # Seek to 1:30
 curl -s -X POST "https://popin-aladdin.msageha.net/api/seek" \
