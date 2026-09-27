@@ -7,6 +7,7 @@ metadata:
     requires:
       bins:
         - curl
+        - jq
 ---
 
 # popIn Aladdin

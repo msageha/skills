@@ -360,7 +360,7 @@ Adlists (blocklists/allowlists). `type` (`allow`/`block`) optional on GET
 | address                                   | string    | List URL                                                                  |
 | enabled                                   | boolean   | Whether list is active                                                    |
 | comment                                   | string    | Optional comment                                                          |
-| type                                      | string    | `block` / `allow`                                                         |
+| type                                      | string    | `allow` / `block`                                                         |
 | groups                                    | integer[] | Associated group IDs (default: `[0]`)                                     |
 | number                                    | integer   | Number of entries                                                         |
 | invalid_domains                           | integer   | Count of malformed entries skipped on last update                         |

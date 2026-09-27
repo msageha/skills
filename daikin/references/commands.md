@@ -24,7 +24,7 @@ curl -s "https://daikin.msageha.net/api/status" | jq '{
 curl -s "https://daikin.msageha.net/api/status" | jq '.monitors'
 ```
 
-## Power ON/OFF (confirm with the user first)
+## Power ON/OFF (purpose-built, no confirmation needed)
 
 ```bash
 # Turn on

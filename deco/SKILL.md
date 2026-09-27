@@ -7,6 +7,7 @@ metadata:
     requires:
       bins:
         - curl
+        - jq
 ---
 
 # Deco BE85
@@ -23,7 +24,9 @@ header/cookie — the server logs into the router itself with stored credentials
   Call endpoints sequentially; don't fan out parallel requests.
 - `band` is `band2_4` / `band5_1` / `band6`; `network` is `host` / `guest`.
 - `GET /wireless` returns `ssid`/`password` base64-encoded; write endpoints
-  accept them in plain text (the server encodes them).
+  accept them in plain text (the server encodes them). Decode `ssid` for
+  display; don't decode or print `password` unless the user explicitly asks
+  for the Wi-Fi password.
 - Confirm with the user before any write: Wi-Fi toggles/config changes briefly
   disconnect clients on that band, `POST /reboot` (requires `confirm: true`)
   takes the whole network down for minutes, and `POST /raw` with a non-read

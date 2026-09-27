@@ -9,6 +9,10 @@ Run requests sequentially — the server serializes them behind one router sessi
 ```bash
 curl -s "https://deco.msageha.net/api/health" | jq .
 
+# Login is lazy; force it (or drop the router session) explicitly
+curl -s -X POST "https://deco.msageha.net/api/login" | jq .
+curl -s -X POST "https://deco.msageha.net/api/logout" | jq .
+
 curl -s "https://deco.msageha.net/api/dashboard" | jq '{
   internet_online, wan_ipv4, connection_type,
   cpu_usage, mem_usage, deco_count, online_clients
@@ -43,7 +47,7 @@ curl -s "https://deco.msageha.net/api/wireless" | jq 'to_entries
   | map(select(.key | startswith("band")))
   | map({band: .key, host: .value.host.enable, guest: .value.guest.enable})'
 
-# SSIDs are base64-encoded — decode when displaying
+# SSIDs are base64-encoded — decode when displaying (leave .password encoded unless asked)
 curl -s "https://deco.msageha.net/api/wireless" \
   | jq '.band5_1.host.ssid | @base64d'
 ```

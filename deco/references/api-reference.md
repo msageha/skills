@@ -145,8 +145,9 @@ MAC clone setting: `{ "enable": ... }`.
 
 Full Wi-Fi config, keyed by band with `host` / `guest` sub-objects
 (enable, ssid, password, channel, channel_width, mode, …).
-**`ssid` and `password` are base64-encoded** in this response — decode with
-`@base64d` (jq) when showing them to the user.
+**`ssid` and `password` are base64-encoded** in this response — decode `ssid`
+with `@base64d` (jq) when showing it to the user. `password` is a secret: leave
+it encoded and out of the output unless the user explicitly asks for it.
 
 ### POST /wireless
 

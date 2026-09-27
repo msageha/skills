@@ -2,6 +2,12 @@
 name: switch2-control
 description: "Nintendo Switch 2 を LAN 上の HTTP API 経由で Pro Controller として操作する。ボタン入力・スティック・マクロ実行・接続管理。Switch 2 / ゲーム機の操作依頼で使用。"
 allowed-tools: Bash
+metadata:
+  openclaw:
+    emoji: "🎮"
+    requires:
+      bins:
+        - curl
 ---
 
 # switch2-control
@@ -12,7 +18,7 @@ LAN 内の Raspberry Pi 上で稼働する nsbt HTTP API を通じて、Nintendo
 ベース URL: http://172.16.1.108:8765
 ```
 
-> 詳細な API 仕様・マクロ構文・トラブルシューティングは同ディレクトリの `reference.md` を参照。
+> 詳細な API 仕様・マクロ構文・トラブルシューティングは [references/api-reference.md](references/api-reference.md) を参照。
 
 ## 必須フロー: 操作前の接続確認
 
@@ -72,7 +78,7 @@ curl -s -X POST http://172.16.1.108:8765/macro \
   --data-binary $'LOOP 3\n\tA 0.1s\n\t0.3s'
 ```
 
-構文の詳細(LOOP / HOLD / スティック表記)は `reference.md` 参照。
+構文の詳細(LOOP / HOLD / スティック表記)は [references/api-reference.md](references/api-reference.md) 参照。
 
 ## ボタン名一覧
 
@@ -99,7 +105,7 @@ sleep 15 && curl -s http://172.16.1.108:8765/status
 
 - Switch 2 本体が**起動中(スリープでない)**ことが再接続の条件
 - Switch 2 が「持ちかた/順番を変える」画面のままだと再接続できない(ホーム画面なら OK)
-- 復旧しない場合は `reference.md` のトラブルシューティングを参照。再ペアリングが必要なケースは**人間にエスカレーション**する
+- 復旧しない場合は [references/api-reference.md](references/api-reference.md) のトラブルシューティングを参照。再ペアリングが必要なケースは**人間にエスカレーション**する
 
 ## 注意事項
 

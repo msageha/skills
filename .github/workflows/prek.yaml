@@ -4,18 +4,9 @@ name: prek
 # push / pull_request / workflow_dispatch のトリガーは ci.yaml 側が持つ。
 on:
   workflow_call:
-    inputs:
-      fail-fast:
-        description: "失敗時に呼び出し元の run 全体をキャンセルして他の並列チェックを止める"
-        type: boolean
-        required: false
-        default: false
 
 permissions:
   contents: read
-  # fail-fast step (gh run cancel) に必要。呼び出し元でも同じ権限を付与すること
-  # (called workflow の GITHUB_TOKEN は caller の権限を超えられない)
-  actions: write
 
 jobs:
   prek:
@@ -36,11 +27,3 @@ jobs:
 
       - name: Run prek
         run: mise exec -- prek run --all-files
-
-      # fail-fast: run 全体をキャンセルして並列で走る他のチェックを止める。
-      # run と各 job の conclusion は cancelled になるが、失敗した step は failure として記録に残る。
-      - name: Cancel the entire run on failure
-        if: failure() && inputs.fail-fast
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh run cancel "$GITHUB_RUN_ID" --repo "$GITHUB_REPOSITORY"

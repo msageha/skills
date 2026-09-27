@@ -1,6 +1,6 @@
 # skills
 
-[Claude Code](https://docs.claude.com/en/docs/claude-code) 用の [Agent Skills](https://docs.claude.com/en/docs/claude-code/skills) 集。
+[Agent Skills](https://docs.claude.com/en/docs/claude-code/skills) 集。Claude Code / Codex / Antigravity / OpenClaw から使う。
 
 ## Skills
 
@@ -13,14 +13,13 @@
 | [popin-aladdin](popin-aladdin/)                       | popIn Aladdin（照明一体型プロジェクター）を REST API 経由で操作。シーリングライト・再生/音量・メディアキャスト・リモコン/文字入力 |
 | [stirling-pdf](stirling-pdf/)                         | Stirling PDF による PDF 操作。変換・結合・分割・圧縮・OCR・Markdown/画像/Word 変換など                                            |
 | [switch2-control](switch2-control/)                   | Nintendo Switch 2 を LAN 上の HTTP API 経由で Pro Controller として操作                                                           |
-| [codex-fugu-ultra](codex-fugu-ultra/)                 | Claude Code から codex MCP 経由で Sakana の fugu-ultra モデルにセカンドオピニオンや長時間作業を委譲                               |
-| [codex-fusion](codex-fusion/)                         | Claude Code から codex MCP 経由で OpenRouter の fusion モデルを呼び出す                                                           |
+| [codex-model-profiles](codex-model-profiles/)         | codex CLI のプロファイルで既定以外のモデル (Sakana fugu、OpenRouter fusion / pareto-code) にセカンドオピニオンや長時間作業を委譲  |
 | [japanese-tech-writing](japanese-tech-writing/)       | 日本語技術文書・書籍原稿の文章規範。整形・パラグラフライティング・論証の厳密さ・LLM っぽい空句の禁止などを定める                  |
 | [cognitive-rhythm-writing](cognitive-rhythm-writing/) | 説明的な文章に緩急（認知モードの切替と未回収の緊張）を設計する規範。japanese-tech-writing と併用                                  |
 
 ## 使い方
 
-各ディレクトリを `~/.claude/skills/` 以下に配置するか、プロジェクトの `.claude/skills/` に配置すると Claude Code から利用できる。詳細は各 skill の `SKILL.md` を参照。
+`mise run install-<agent>` (下のタスク一覧) で各エージェントの skills ディレクトリに全 skill を配置する。プロジェクト単位で使うなら、skill ディレクトリをそのプロジェクトの skills ディレクトリ (Claude Code は `.claude/skills/`) に置く。詳細は各 skill の `SKILL.md` を参照。
 
 ## タスク
 
@@ -31,33 +30,33 @@
 <!-- mise-tasks -->
 ## `docs`
 
-- **Usage**: `docs`
+- **Usage:** `docs`
 
 Sync the task list embedded in README.md with mise.toml
 
 ## `install-agy`
 
-- **Usage**: `install-agy`
+- **Usage:** `install-agy`
 
 Symlink all skills into ~/.gemini/antigravity-cli/skills
 
 ## `install-claude`
 
-- **Usage**: `install-claude`
+- **Usage:** `install-claude`
 
 Symlink all skills into ~/.claude/skills
 
 ## `install-codex`
 
-- **Usage**: `install-codex`
+- **Usage:** `install-codex`
 
 Symlink all skills into ~/.codex/skills
 
 ## `install-openclaw`
 
-- **Usage**: `install-openclaw`
+- **Usage:** `install-openclaw`
 
-Copy all skills into ~/.openclaw/workspace/skills (its skill loader doesn't follow symlinks)
+Copy all skills into ~/.openclaw/workspace/skills (its loader rejects symlinks that resolve outside the workspace unless skills.load.allowSymlinkTargets is set)
 <!-- /mise-tasks -->
 <!-- dprint-ignore-end -->
 

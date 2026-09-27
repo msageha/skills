@@ -1,12 +1,4 @@
 {
-  "json": {
-  },
-  "markdown": {
-  },
-  "toml": {
-  },
-  "yaml": {
-  },
   "excludes": [
     "**/node_modules",
     "**/*-lock.json",

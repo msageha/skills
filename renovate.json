@@ -31,15 +31,6 @@
   "customManagers": [
     {
       "customType": "regex",
-      "description": "workflow の container.image (digest pin + バージョンコメント) を docker datasource で更新する",
-      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
-      "matchStrings": [
-        "image:\\s+(?<depName>[a-z0-9./_-]+)@(?<currentDigest>sha256:[a-f0-9]{64})\\s+#\\s+(?<currentValue>v?\\d+\\.\\d+\\.\\d+)"
-      ],
-      "datasourceTemplate": "docker"
-    },
-    {
-      "customType": "regex",
       "description": "dprint.json の公式プラグイン (dprint/dprint-plugin-*) の WASM URL を更新する。@ 以降の sha256 checksum は github-release-attachments datasource が release asset (plugin.wasm) の実ハッシュ照合で追従させる",
       "managerFilePatterns": ["/(^|/)dprint\\.json$/"],
       "matchStrings": [

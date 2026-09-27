@@ -1,73 +1,33 @@
 # ツールのバージョンは Renovate (mise manager) が bump する。latest 指定にしない。
 # checksum の再解決は mise-lock.yaml (週次) が行う。
+# ローカルだけの値は mise.local.toml (git 管理外) を併置して上書きできる。
 [tools]
 prek = "0.4.10"
 actionlint = "1.7.12"
 dprint = "0.55.2"
+# actionlint が shell script の検査に呼ぶ
+shellcheck = "0.11.0"
 
-[env]
-# `mise.local.toml` (git 管理外) を併置すると、ローカルだけの値で上書きできる。
-#
-# 例:
-# MY_VAR = "value"
-# _.file = ".env"
-
+# install タスクは bash 前提 ($HOME 展開・.sh の直接実行) なので、Windows の既定 inline shell (cmd /c) を使わず bash を指定する
 [tasks.install-claude]
 description = "Symlink all skills into ~/.claude/skills"
-run = '''
-#!/usr/bin/env bash
-set -euo pipefail
-dest="$HOME/.claude/skills"
-mkdir -p "$dest"
-for skill in */SKILL.md; do
-  skill="${skill%/SKILL.md}"
-  ln -sfn "$PWD/$skill" "$dest/$skill"
-  echo "linked $skill -> $dest/$skill"
-done
-'''
+run = 'scripts/install-skills.sh link "$HOME/.claude/skills"'
+shell = "bash -c"
 
 [tasks.install-codex]
 description = "Symlink all skills into ~/.codex/skills"
-run = '''
-#!/usr/bin/env bash
-set -euo pipefail
-dest="$HOME/.codex/skills"
-mkdir -p "$dest"
-for skill in */SKILL.md; do
-  skill="${skill%/SKILL.md}"
-  ln -sfn "$PWD/$skill" "$dest/$skill"
-  echo "linked $skill -> $dest/$skill"
-done
-'''
+run = 'scripts/install-skills.sh link "$HOME/.codex/skills"'
+shell = "bash -c"
 
 [tasks.install-agy]
 description = "Symlink all skills into ~/.gemini/antigravity-cli/skills"
-run = '''
-#!/usr/bin/env bash
-set -euo pipefail
-dest="$HOME/.gemini/antigravity-cli/skills"
-mkdir -p "$dest"
-for skill in */SKILL.md; do
-  skill="${skill%/SKILL.md}"
-  ln -sfn "$PWD/$skill" "$dest/$skill"
-  echo "linked $skill -> $dest/$skill"
-done
-'''
+run = 'scripts/install-skills.sh link "$HOME/.gemini/antigravity-cli/skills"'
+shell = "bash -c"
 
 [tasks.install-openclaw]
-description = "Copy all skills into ~/.openclaw/workspace/skills (its skill loader doesn't follow symlinks)"
-run = '''
-#!/usr/bin/env bash
-set -euo pipefail
-dest="$HOME/.openclaw/workspace/skills"
-mkdir -p "$dest"
-for skill in */SKILL.md; do
-  skill="${skill%/SKILL.md}"
-  rm -rf "$dest/$skill"
-  cp -R "$PWD/$skill" "$dest/$skill"
-  echo "copied $skill -> $dest/$skill"
-done
-'''
+description = "Copy all skills into ~/.openclaw/workspace/skills (its loader rejects symlinks that resolve outside the workspace unless skills.load.allowSymlinkTargets is set)"
+run = 'scripts/install-skills.sh copy "$HOME/.openclaw/workspace/skills"'
+shell = "bash -c"
 
 [tasks.docs]
 description = "Sync the task list embedded in README.md with mise.toml"

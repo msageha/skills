@@ -102,6 +102,7 @@ curl -s "https://epgstation.msageha.net/api/recorded?isHalfWidth=true&keyword=ã‚
 ## Delete / Protect / Unprotect Recorded Program
 
 ```bash
+# Deleting a recording is irreversible â€” confirm with the user first
 curl -s -X DELETE "https://epgstation.msageha.net/api/recorded/{recordedId}"
 curl -s -X PUT "https://epgstation.msageha.net/api/recorded/{recordedId}/protect"
 curl -s -X PUT "https://epgstation.msageha.net/api/recorded/{recordedId}/unprotect"

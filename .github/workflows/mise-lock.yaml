@@ -11,8 +11,6 @@ on:
 permissions:
   contents: write
   pull-requests: write
-  # PR 作成 / push 後に CI 系 workflow を workflow_dispatch で起動するため (最下段のステップ参照)
-  actions: write
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -20,15 +18,18 @@ concurrency:
 
 jobs:
   mise-lock:
+    # fork からの PR は GITHUB_TOKEN で push できず head ブランチの checkout もできないため対象外
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
       # push は下段のステップで明示的にトークンを渡して行うため、
-      # チェックアウトに認証情報を残さない
+      # チェックアウトに認証情報を残さない。
+      # schedule / workflow_dispatch は起動時に選んだ ref ではなく main を基点にする
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || 'main' }}
           persist-credentials: false
 
       # 注意: org の Actions 許可設定 (allowed_actions: selected) で
@@ -59,20 +60,26 @@ jobs:
             echo "changed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Renovate 等が mise.toml を変更した既存 PR には、
-      # 同じブランチに直接 commit して mise.lock を追従させる。
-      # fork からの PR は GITHUB_TOKEN で push できないためスキップする。
-      - name: Push mise.lock update to the pull request branch
-        if: steps.diff.outputs.changed == 'true' && github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
-        env:
-          GH_TOKEN: ${{ github.token }}
-          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+      - name: Commit mise.lock
+        if: steps.diff.outputs.changed == 'true'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add mise.lock
           git commit -m "chore: update mise.lock"
-          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:$HEAD_REF"
+
+      # 以下の push / PR 作成は GITHUB_TOKEN で行うため、それが起こす pull_request run は
+      # approval-required 状態で作られ、write 権限のあるユーザーが Actions 上で承認するまで
+      # CI は走らない (GitHub 仕様。workflow_dispatch で代替しても required check には数えられない)。
+
+      # Renovate 等が mise.toml を変更した既存 PR には、
+      # 同じブランチに直接 push して mise.lock を追従させる。
+      - name: Push to the pull request branch
+        if: steps.diff.outputs.changed == 'true' && github.event_name == 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:$HEAD_REF"
 
       # schedule / workflow_dispatch では新規に PR を作る。
       - name: Open pull request
@@ -80,25 +87,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -B chore/mise-lock
-          git add mise.lock
-          git commit -m "chore: update mise.lock"
-          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" chore/mise-lock
+          git push --force "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" HEAD:refs/heads/chore/mise-lock
 
           if ! gh pr view chore/mise-lock --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh pr create --repo "$GITHUB_REPOSITORY" --title "chore: update mise.lock" --base main --head chore/mise-lock \
-              --body "mise lock の自動実行による mise.lock の更新です。差分を確認してください。"
+              --body "mise lock の自動実行による mise.lock の更新です。差分を確認し、approval-required になっている CI run を承認してください。"
           fi
-
-      # GITHUB_TOKEN による push / PR 作成からは新しい workflow run が発火しない
-      # (再帰実行防止の GitHub 仕様)。workflow_dispatch はその例外なので、
-      # 更新したブランチへ CI 系 workflow を明示的に起動して required check を付ける。
-      # CI 系チェック (prek / gitleaks) は ci.yaml に集約されているため ci.yaml のみ起動する。
-      - name: Dispatch CI workflows for the updated branch
-        if: steps.diff.outputs.changed == 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          TARGET_REF: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || 'chore/mise-lock' }}
-        run: gh workflow run ci.yaml --repo "$GITHUB_REPOSITORY" --ref "$TARGET_REF"
