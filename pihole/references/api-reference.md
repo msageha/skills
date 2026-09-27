@@ -1,8 +1,10 @@
 # Pi-hole API Reference
 
 Base URL: `https://pihole.msageha.net/api`
-Pi-hole REST API v6 (FTL v6.6.2 / core v6.4.2 / web v6.5.1). Requests to this
-instance don't need any authentication header/cookie.
+Pi-hole REST API v6 (docker image `pihole/pihole:2026.09.0`: core v6.4.3 /
+web v6.6 / FTL v6.7.1). Requests to this instance don't need any
+authentication header/cookie; the reverse proxy admits only allowlisted LAN
+client IPs (`403` with an nginx HTML page otherwise).
 
 Every response body includes a `took` field (request processing time in
 seconds, float) not shown in the examples below.

@@ -15,6 +15,22 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/remote/ping" | jq .
 
 # Light / remote button names accepted by /light and /key
 curl -s "https://popin-aladdin.msageha.net/api/remote/buttons" | jq .
+
+# Model / OS / storage / feature flags (TCP Version handshake)
+curl -s "https://popin-aladdin.msageha.net/api/remote/version" | jq .
+
+# Find Aladdins on the LAN (wait up to 3 s for answers)
+curl -s "https://popin-aladdin.msageha.net/api/discover?wait=3" | jq .
+```
+
+## What's on Screen
+
+```bash
+# Foreground app (apps like YouTube are invisible to the DLNA /status)
+curl -s "https://popin-aladdin.msageha.net/api/remote/device" | jq '{foreground_app, foreground_package}'
+
+# Screenshot — the returned image_url is served by the device on its LAN
+curl -s -X POST "https://popin-aladdin.msageha.net/api/capture" | jq .
 ```
 
 ## Ceiling Light
@@ -32,7 +48,7 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/light" \
 curl -s -X POST "https://popin-aladdin.msageha.net/api/light" \
   -H "Content-Type: application/json" -d '{"button": "darker", "repeat": 3}' | jq .
 
-# Color temperature / scenes
+# Color temperature / presets
 curl -s -X POST "https://popin-aladdin.msageha.net/api/light" \
   -H "Content-Type: application/json" -d '{"button": "warmer", "repeat": 2}' | jq .
 curl -s -X POST "https://popin-aladdin.msageha.net/api/light" \
@@ -102,9 +118,28 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/cast" \
        "upnp_class": "object.item.imageItem"}' | jq .
 ```
 
-## Remote Keys (D-pad / hardware)
+## Launch Apps (deeplink / shortcut keys)
 
-`power` toggles the whole device — confirm with the user first.
+```bash
+# Open a URL / app scheme on the device
+curl -s -X POST "https://popin-aladdin.msageha.net/api/deeplink" \
+  -H "Content-Type: application/json" -d '{"url": "https://www.youtube.com/tv"}' | jq .
+curl -s -X POST "https://popin-aladdin.msageha.net/api/deeplink" \
+  -H "Content-Type: application/json" -d '{"url": "tver://"}' | jq .
+
+# Remote shortcut keys
+curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
+  -H "Content-Type: application/json" -d '{"button": "youtube"}' | jq .
+
+# Is an app installed?
+curl -s "https://popin-aladdin.msageha.net/api/remote/apps/jp.co.tver.tvapp" | jq .
+```
+
+## Remote Keys (D-pad / focus / hardware)
+
+`power` only opens the on-screen power menu; to switch the unit off use
+`POST /power/off` below. A 200 means the UDP datagram was sent, not that the
+unit is on.
 
 ```bash
 # Navigate: down twice, then OK
@@ -113,11 +148,17 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
 curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
   -H "Content-Type: application/json" -d '{"button": "ok"}' | jq .
 
-# Back / Home
+# Back / Home / Settings
 curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
   -H "Content-Type: application/json" -d '{"button": "back"}' | jq .
 curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
   -H "Content-Type: application/json" -d '{"button": "home"}' | jq .
+curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
+  -H "Content-Type: application/json" -d '{"button": "settings"}' | jq .
+
+# Focus adjustment (one step each)
+curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
+  -H "Content-Type: application/json" -d '{"button": "focus_plus"}' | jq .
 ```
 
 ## Text / Voice Input
@@ -132,11 +173,18 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/voice" \
   -H "Content-Type: application/json" -d '{"text": "天気を教えて"}' | jq .
 ```
 
-## Maintenance
+## Maintenance / Power
 
 ```bash
+# Free memory (kills background apps)
 curl -s -X POST "https://popin-aladdin.msageha.net/api/memory/free" | jq .
-curl -s -X POST "https://popin-aladdin.msageha.net/api/capture" | jq .
+
+# Photo memory (on-device album) and light-unit firmware
+curl -s "https://popin-aladdin.msageha.net/api/remote/album" | jq '{count, free_space, light_version}'
+
+# Power off — irreversible from this API, confirm with the user first
+curl -s -X POST "https://popin-aladdin.msageha.net/api/power/off" \
+  -H "Content-Type: application/json" -d '{"confirm": true}' | jq .
 ```
 
 ## Raw SOAP Passthrough (advanced)

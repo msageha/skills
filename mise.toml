@@ -20,8 +20,8 @@ run = 'scripts/install-skills.sh link "$HOME/.codex/skills"'
 shell = "bash -c"
 
 [tasks.install-agy]
-description = "Symlink all skills into ~/.gemini/antigravity-cli/skills"
-run = 'scripts/install-skills.sh link "$HOME/.gemini/antigravity-cli/skills"'
+description = "Symlink all skills into ~/.gemini/config/skills"
+run = 'scripts/install-skills.sh link "$HOME/.gemini/config/skills"'
 shell = "bash -c"
 
 [tasks.install-openclaw]

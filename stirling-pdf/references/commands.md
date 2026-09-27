@@ -49,6 +49,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/img" \
 ```bash
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/word" \
   -F "fileInput=@input.pdf" \
+  -F "outputFormat=docx" \
   -o output.docx
 
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/html" \
@@ -207,10 +208,19 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-stamp" \
   -F "rotation=45" \
   -F "opacity=0.3" \
   -F "position=5" \
+  -F "overrideX=-1" \
+  -F "overrideY=-1" \
+  -F "customMargin=medium" \
+  -F "customColor=#d3d3d3" \
   -o stamped.pdf
 ```
 
 ## Update Metadata
+
+Standard fields you omit are removed from the document — resend every value
+you want to keep. `POST /analysis/document-properties` gives the current text
+fields; convert its dates to `yyyy/MM/dd HH:mm:ss` before resending, and pass
+`trapped` yourself (analysis doesn't return it).
 
 ```bash
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/update-metadata" \

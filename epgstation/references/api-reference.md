@@ -397,11 +397,11 @@ Not documented in detail here to keep this skill lean, but worth knowing they ex
 - `GET /streams`, `GET/DELETE /streams/{streamId}`, `PUT /streams/{streamId}/keep`,
   and live/recorded streaming sub-routes (`/streams/live/{channelId}/{hls,m2ts,mp4,webm}`,
   `/streams/recorded/{videoFileId}/{hls,mp4,webm}`) — live/VOD streaming
-- `GET/DELETE /thumbnails`, `POST /thumbnails/videos/{videoFileId}`, `DELETE /thumbnails/cleanup`
+- `GET/DELETE /thumbnails`, `POST /thumbnails/videos/{videoFileId}`, `POST /thumbnails/cleanup`
 - `GET/DELETE /videos/{videoFileId}`, `/videos/{videoFileId}/{duration,kodi,playlist}`, `POST /videos/upload`
 - `GET/POST /tags`, `GET/PUT/DELETE /tags/{tagId}`, `PUT /tags/{tagId}/relate` — recorded-tag CRUD
 - `GET /dropLogs/{dropLogFileId}` — per-recording drop/error/scrambling counters
-- `POST /recorded`, `POST /recorded/{recordedId}/encode`, `DELETE /recorded/cleanup`, `GET /recorded/options`
+- `POST /recorded`, `DELETE /recorded/{recordedId}/encode` (cancel encoding), `POST /recorded/cleanup`, `GET /recorded/options`
 - `GET /channels/{channelId}/logo`
 - `GET /iptv/channel.m3u8`, `GET /iptv/epg.xml` — IPTV playlist/EPG export
 

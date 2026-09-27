@@ -13,7 +13,9 @@ metadata:
 # Pi-hole
 
 Base URL: `https://pihole.msageha.net/api` (Pi-hole v6 REST API). Requests to
-this instance don't need any authentication header/cookie.
+this instance don't need any authentication header/cookie. The reverse proxy
+only admits allowlisted LAN client IPs — a `403` with an nginx HTML page means
+the caller isn't on that list, not an API error.
 
 ## Key facts
 

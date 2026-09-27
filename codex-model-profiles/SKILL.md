@@ -14,7 +14,7 @@ codex CLI の `--profile <name>` (`-p`) は `$CODEX_HOME/<name>.config.toml` (�
 | `fugu`        | `fugu-ultra`             | `sakana` / `SAKANA_API_KEY`         | Sakana fugu-ultra。1M context。軽量版 `fugu-mini` も同カタログにある |
 | `fugu-cyber`  | `fugu-cyber`             | `fugu_cyber` / `FUGU_PAYG_API_KEY`  | Sakana PAYG 版の fugu。1M context                                    |
 | `fusion`      | `openrouter/fusion`      | `openrouter` / `OPENROUTER_API_KEY` | 1M context                                                           |
-| `pareto-code` | `openrouter/pareto-code` | `openrouter` / `OPENROUTER_API_KEY` | 2M context                                                           |
+| `pareto-code` | `openrouter/pareto-code` | `openrouter` / `OPENROUTER_API_KEY` | 2M context。text 入力のみ (画像は渡せない)                           |
 
 全 profile 共通で reasoning effort は `high` (カタログ上 high のみ)、`features.image_generation = false` (これらの API は image_generation tool 非対応で、有効のままだと 400 `Invalid value: 'image_generation'` になる)。正本は各 `<name>.config.toml` と `<name>.json` で、この表は選択の案内。
 
@@ -55,9 +55,9 @@ codex exec -p "$profile" -s read-only -C /path/to/project \
 ## 前提条件
 
 - API key の環境変数が codex プロセスの環境にあること (`~/.codex/.env` で供給)。未設定だと認証エラーになる。
-- `config.toml` の `[model_providers.<provider>]` に provider (`base_url` / `env_key` / `wire_api = "responses"`) が定義されていること。profile 側 (`<name>.config.toml`) が持つのは `model` / `model_provider` / `model_catalog_json` / `model_reasoning_effort` / `[features]` だけ。
+- `config.toml` の `[model_providers.<provider>]` に provider (`name` / `base_url` / `env_key` / `wire_api = "responses"` / `stream_idle_timeout_ms = 600000`) が定義されていること。profile 側 (`<name>.config.toml`) が持つのは `model` / `model_provider` / `model_catalog_json` / `model_reasoning_effort` / `[features]` だけ。
 - `<name>.json` (モデルカタログ: slug・context_window・対応 reasoning effort) があること。
-- 作業ディレクトリが codex 側で信頼済み (`[projects."<path>"] trust_level = "trusted"`) で、`config.toml` に `approval_policy = "never"` があること。承認待ちで止まらない前提はこれに依存する。
+- 作業ディレクトリが codex 側で信頼済み (`[projects."<path>"] trust_level = "trusted"`。この環境で trusted なのは `~/Works/src` と `~/.local/share/chezmoi`) で、`config.toml` に `approval_policy = "never"` があること。承認待ちで止まらない前提はこれに依存する。
 
 新しいモデルを足すときは `<name>.config.toml` と `<name>.json` を既存のものに倣って作り、上の表に 1 行追加する。
 

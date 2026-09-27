@@ -12,7 +12,7 @@ metadata:
 
 # Stirling PDF
 
-Base URL: `https://pdf-tools.msageha.net/api/v1` (Stirling PDF v2.14.0).
+Base URL: `https://pdf-tools.msageha.net/api/v1` (Stirling PDF v3.0.0).
 File-processing endpoints accept `multipart/form-data` and return the processed
 file directly; `/analysis/*` and `/info/status` return JSON.
 
