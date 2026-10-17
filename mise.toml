@@ -2,9 +2,9 @@
 # checksum の再解決は mise-lock.yaml (週次) が行う。
 # ローカルだけの値は mise.local.toml (git 管理外) を併置して上書きできる。
 [tools]
-prek = "0.4.10"
+prek = "0.5.5"
 actionlint = "1.7.12"
-dprint = "0.55.2"
+dprint = "0.61.1"
 # actionlint が shell script の検査に呼ぶ
 shellcheck = "0.11.0"
 
