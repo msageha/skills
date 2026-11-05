@@ -15,6 +15,7 @@
   },
   "minimumReleaseAge": "7 days",
   "platformAutomerge": false,
+  "gitIgnoredAuthors": ["github-actions[bot]@users.noreply.github.com"],
   "packageRules": [
     {
       "description": "PR の乱立を防ぐため、major 以外 (minor/patch/pin/digest) の更新は manager・エコシステム横断で 1 つの PR に集約する。major は separateMajorMinor により分離され、グルーピングせず個別 PR で人手レビューする",
