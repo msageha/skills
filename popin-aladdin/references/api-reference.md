@@ -1,32 +1,54 @@
 # popIn Aladdin API Reference
 
 Base URL: `https://popin-aladdin.msageha.net/api`
-FastAPI wrapper (popin-aladdin-api v0.1.0) around the popIn Aladdin
-(ceiling-light projector, UPnP friendly name `Aladdin 2`). Requests to this
-instance don't need any authentication header/cookie; the reverse proxy admits
-only allowlisted LAN client IPs and rejects requests whose `Origin` header
-names another site (`403` otherwise). Interactive docs:
+FastAPI wrapper (popin-aladdin-api) around the popIn Aladdin (ceiling-light
+projector, UPnP friendly name `Aladdin 2`). Requests to this instance don't
+need any authentication header/cookie; the reverse proxy admits only
+allowlisted LAN client IPs and rejects requests whose `Origin` header names
+another site (`403` otherwise). Interactive docs:
 `https://popin-aladdin.msageha.net/docs`.
 
-Two control planes on the unit:
+This file holds what the OpenAPI document doesn't say: errors, what each
+control plane can and can't observe, what was verified on the unit, and the
+behaviour behind the buttons, casting and SOAP. Read field-level schemas from
+the OpenAPI document.
 
-1. **UPnP/DLNA MediaRenderer** — playback, volume, cast (`/status`, `/play`,
-   `/volume`, `/cast`, `/soap`, …)
-2. **Proprietary protocols reconstructed from the official Aladdin X app** —
-   popIn's TCP protocol (light, text, voice, deeplink, version / album / app
-   info) and the XGIMI GMSDK UDP protocol (keys, screenshot, memory, power
-   off, device info, LAN discovery): `/light`, `/key`, `/keyboard`, `/voice`,
-   `/deeplink`, `/remote/*`, `/discover`, `/memory/free`, `/capture`,
-   `/power/off`; TCP reachability via `POST /remote/ping`.
+## Request / response schemas
 
-Verified on the real unit (popIn Aladdin 2): light buttons, D-pad, `back`
-`menu` `vol_up` `vol_down` `power`, `/keyboard`, `/voice`, `/remote/ping`.
-Everything else on the proprietary side (`focus_*`, `*_long`, `settings`, app
-shortcut keys, `/remote/version` `/remote/album` `/remote/apps` `/remote/device`,
-`/discover`, `/deeplink`, `/memory/free`, `/capture`, `/power/off`) comes from
-static analysis of the app and is not yet confirmed to work.
+`https://popin-aladdin.msageha.net/openapi.json` (generated from the server
+code, same access rules as the API) has every endpoint's fields, types,
+required flags, enums and response models, with descriptions in Japanese. Look
+up one operation instead of reading the whole document:
+
+```bash
+set -o pipefail  # a failed download must fail the command
+# List operations
+curl -sf "https://popin-aladdin.msageha.net/openapi.json" | jq -er '.paths | to_entries[]
+  | .key as $p | .value | to_entries[] | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
+
+# One operation with its schemas inlined — set --arg path / --arg method
+curl -sf "https://popin-aladdin.msageha.net/openapi.json" | jq -e --arg path /api/cast --arg method post '
+  . as $root
+  | def deref($seen):
+      if type == "object" then
+        if has("$ref") then (."$ref" | split("/") | last) as $n
+          | (if ($seen | index($n)) then {"$ref": $n} else ($root.components.schemas[$n] | deref($seen + [$n])) end)
+            + (del(."$ref") | deref($seen))
+        else map_values(deref($seen)) end
+      elif type == "array" then map(deref($seen)) else . end;
+    .paths[$path][$method]
+    | {summary, description, parameters, request: .requestBody,
+       responses: (.responses | with_entries(.value |= if .content and (.description != "Validation Error") then .content else .description end))}
+    | deref([])'
+```
+
+`GET /remote/buttons` lists the button names without touching the device:
+`light` (for `/light`), and `key` / `key_stateless` (both for `/key`; `key`
+entries are sent as press + release, `key_stateless` as a single press).
 
 ## Errors
+
+The OpenAPI document lists only `200` / `422`; the server also returns:
 
 | Status | Meaning                                                                                                                                            |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -41,325 +63,83 @@ answer: a 200 means the datagram was sent, not that the unit acted on it.
 
 Requests are serialized behind a server-side lock; concurrent calls queue up.
 
----
-
-## System
-
-### GET /health
-
-Server status without touching the unit.
-
-```json
-{ "status": "ok", "host": "http://172.16.1.113" }
-```
-
-### GET /remote/buttons
-
-Available button names, no device round-trip:
-
-```json
-{
-  "light": [
-    "switch",
-    "brighter",
-    "darker",
-    "cooler",
-    "warmer",
-    "full",
-    "night",
-    "on",
-    "off",
-    "eco",
-    "sleep"
-  ],
-  "key": [
-    "home",
-    "up",
-    "right",
-    "down",
-    "ok",
-    "left",
-    "focus_plus",
-    "focus_minus",
-    "home_long"
-  ],
-  "key_stateless": [
-    "back",
-    "vol_up",
-    "vol_down",
-    "power",
-    "menu",
-    "menu_long",
-    "settings",
-    "netflix",
-    "youtube",
-    "prime_video",
-    "custom",
-    "custom_long"
-  ]
-}
-```
-
-`key` entries are sent as press + release, `key_stateless` as single key
-presses; both go to `POST /key`.
-
-### POST /remote/ping
-
-TCP reachability check of the proprietary control plane → `{ "ok": true }`.
-
-### GET /discover
-
-Broadcast on the LAN and list the Aladdins that answer; independent of the
-configured host. Query `wait` = seconds to wait for answers (0.5..15, default
-`3`). On this instance it always returns `[]`: the server runs on a Docker
-bridge network, so the broadcast doesn't reach the LAN. Response: array of
-
-| Field      | Type    | Description                           |
-| ---------- | ------- | ------------------------------------- |
-| ip_address | string  | Device IP                             |
-| model      | string  | e.g. `Aladdin 2`                      |
-| name       | string  | Device name                           |
-| pid        | string  | Unit ID                               |
-| mac        | string  | MAC address                           |
-| version    | integer | Protocol version                      |
-| zipcode    | string  | Postal code configured on the device  |
-| connected  | boolean | Another client is currently connected |
-
----
-
-## Status
-
-### GET /info
-
-UPnP device description (cached by the server after the first fetch). All
-fields nullable except `services` and `description_url`.
-
-| Field                                         | Type     | Description                                                     |
-| --------------------------------------------- | -------- | --------------------------------------------------------------- |
-| friendly_name                                 | string   | e.g. `Aladdin 2`                                                |
-| manufacturer / model_name / model_description | string   | Renderer identity                                               |
-| udn                                           | string   | Unique Device Name (UUID, per-unit)                             |
-| services                                      | string[] | e.g. `["AVTransport", "ConnectionManager", "RenderingControl"]` |
-| description_url                               | string   | Device description URL on the LAN                               |
-
-### GET /status
-
-Aggregated DLNA playback state.
-
-```json
-{
-  "state": "PLAYING",
-  "status": "OK",
-  "volume": 35,
-  "mute": false,
-  "current_uri": "http://192.168.1.50:8200/video/sample.mp4",
-  "track_duration_seconds": 212.0,
-  "position_seconds": 30.0
-}
-```
-
-`state`: `STOPPED` / `PLAYING` / `PAUSED_PLAYBACK` / … (UPnP transport states).
-Apps running on the projector (YouTube etc.) are not visible here — use
-`GET /remote/device`.
-
-### GET /transport / GET /position / GET /media / GET /protocol-info
-
-Detail views behind `/status`:
-
-| Endpoint         | Fields                                                                                               |
-| ---------------- | ---------------------------------------------------------------------------------------------------- |
-| `/transport`     | `state`, `status`, `speed`                                                                           |
-| `/position`      | `track`, `track_duration(_seconds)`, `track_uri`, `track_metadata`, `rel_time(_seconds)`, `abs_time` |
-| `/media`         | `nr_tracks`, `media_duration`, `current_uri(_metadata)`, `play_medium`                               |
-| `/protocol-info` | `{ "source": [...], "sink": [...] }` (supported formats)                                             |
-
-### GET /remote/device
-
-Runtime info from the UDP control channel — the only way to know what is in
-the foreground. All fields nullable.
-
-| Field              | Type    | Description                                     |
-| ------------------ | ------- | ----------------------------------------------- |
-| device_name        | string  | Device name                                     |
-| device_mode        | string  | Device mode                                     |
-| foreground_app     | string  | Foreground app name                             |
-| foreground_package | string  | Foreground app package                          |
-| runtime            | integer | Uptime as reported by the device (unit unknown) |
-| rom                | integer | ROM size as reported                            |
-| mst / tips         | string  | Device-reported values, purpose unknown         |
-
-### GET /remote/version
-
-Self-description returned by the TCP Version handshake. All fields nullable.
-
-| Field                    | Type             | Description                                                                    |
-| ------------------------ | ---------------- | ------------------------------------------------------------------------------ |
-| code                     | integer          | Protocol version, e.g. `10`                                                    |
-| model                    | string           | e.g. `Aladdin 2`                                                               |
-| device_name / pid        | string           | Device name / unit ID                                                          |
-| aladdin_id               | string           | Aladdin account link ID                                                        |
-| platform                 | string           | `Android` / `webos`                                                            |
-| os_version / sdk_int     | string / integer | OS version / Android API level                                                 |
-| lang / country           | string           | Locale                                                                         |
-| total_space / free_space | integer          | Storage in bytes                                                               |
-| server_access            | boolean          | Cloud connectivity                                                             |
-| feature_access           | object           | Feature → `1` = available (keys like `focus`, `input`, `memory_release`)       |
-| capability               | object           | Capability → `1` = supported, `null` = unknown (keys `screenshot`, `app_list`) |
-
-### GET /remote/album
-
-Photo memory (on-device album): `count`, `total_space`, `free_space`,
-`light_version` (firmware of the light unit), `files[]` with `name`, `size`,
-`type` (`1` photo, `2` thumbnail, `10`..`12` clock).
-
-### GET /remote/apps/{package}
-
-Whether an Android package is installed and its version. `package` must be a
-dotted identifier (e.g. `jp.co.tver.tvapp`, `com.google.android.youtube.tv`).
-Response: `{ "package", "installed", "version_code", "version_name" }`.
-
----
-
-## Playback control
-
-### GET /volume / POST /volume
-
-`GET` → `{ "volume": 35 }`. `POST` body: `{ "volume": <0..100> }`.
-
-### GET /mute / POST /mute
-
-`GET` → `{ "mute": false }`. `POST` body: `{ "mute": true|false }`.
-
-### POST /play / /pause / /stop / /next / /previous
-
-No body required (`/play` optionally takes `{ "speed": "1" }`). `/stop`,
-`/next` and `/previous` change DLNA playback — confirm with the user first if
-something is playing. They don't affect apps such as YouTube.
-Response: `{ "action": "<name>" }` (`/play` adds `"speed"`).
-
-### POST /seek
-
-Body: `{ "seconds": <float ≥ 0> }` — absolute position (REL_TIME).
-
-### POST /play-mode
-
-Body: `{ "mode": ... }` — one of `NORMAL` / `REPEAT_ONE` / `REPEAT_ALL` /
-`SHUFFLE` / `SHUFFLE_NOREPEAT`.
-
-### POST /cast
-
-Load (and by default play) a media URL on the projector. The URL must be
-reachable from the device's LAN. Replaces the current DLNA media even with
-`autoplay: false` — if something is being watched (or you can't tell), confirm
-with the user first.
-The URI is set before Play is sent, so if the call fails, check `GET /media`
-and `GET /transport` before resending.
-
-| Field      | Type    | Required | Description                                                                                                                        |
-| ---------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
-| uri        | string  | yes      | Absolute media URL starting with `<scheme>://`                                                                                     |
-| title      | string  | no       | Title for the generated DIDL-Lite metadata (default `popin-aladdin-api`)                                                           |
-| upnp_class | string  | no       | DIDL-Lite `upnp:class`, any string; default `object.item.videoItem` (others e.g. `object.item.audioItem`, `object.item.imageItem`) |
-| metadata   | string  | no       | Explicit DIDL-Lite XML; auto-generated when omitted                                                                                |
-| autoplay   | boolean | no       | Send Play right after loading (default `true`)                                                                                     |
-
-Response: `{ "uri": ..., "autoplay": true }`
-
----
-
-## Remote control (proprietary protocols)
-
-### POST /light
-
-Ceiling light operation (TCP).
-
-| Field  | Type    | Required | Description                                                                            |
-| ------ | ------- | -------- | -------------------------------------------------------------------------------------- |
-| button | enum    | yes      | `switch` `brighter` `darker` `cooler` `warmer` `full` `night` `on` `off` `eco` `sleep` |
-| repeat | integer | no       | Press N times, 1..50 (default 1) — meant for `brighter`/`darker`/`cooler`/`warmer`     |
-
-`on`/`off` set explicit states and `switch` toggles; `brighter`/`darker` and
-`cooler`/`warmer` move one step each. `full`/`night`/`eco`/`sleep` send the
-app's preset buttons of the same name (exact scene behaviour not documented).
-Response echoes the body.
-
-### POST /key
-
-Projector key input (UDP). Same body shape as `/light` (`button` + `repeat`).
-
-| Group         | Buttons                                                                                                          |
-| ------------- | ---------------------------------------------------------------------------------------------------------------- |
-| D-pad         | `up` `down` `left` `right` `ok` `home`                                                                           |
-| Focus         | `focus_plus` `focus_minus`                                                                                       |
-| Long press    | `home_long` `menu_long`                                                                                          |
-| Hardware      | `back` `menu` `vol_up` `vol_down` `power` (opens the power menu; use `POST /power/off` to switch off) `settings` |
-| App shortcuts | `netflix` `youtube` `prime_video` `custom` `custom_long`                                                         |
-
-Returns 200 once the datagrams are sent, even if the unit is off. Response
-echoes the body.
-
-### POST /keyboard
-
-Body: `{ "text": "..." }` — types into the currently focused on-screen input.
-The device must already be showing a text field (navigate with `/key` first).
-
-### POST /voice
-
-Body: `{ "text": "..." }` — sends the text as if spoken to the voice assistant.
-
-### POST /deeplink
-
-Body: `{ "url": "..." }` (non-empty) — opens the URL scheme / intent on the device, i.e.
-launches an app (`https://www.youtube.com/tv`, `tver://`, …). Response echoes
-the body.
-
-### POST /memory/free
-
-No body. Frees memory by killing background apps (UDP, no reply awaited).
-Response: `{ "action": "free_memory" }`.
-
-### POST /capture
-
-No body. Takes a screenshot and returns the image URL served by the device;
-fetch it from the device's LAN.
-Response: `{ "action": "capture", "image_url": "http://172.16.1.113:.../....png" }`.
-
-### POST /power/off
+## Control planes
+
+1. UPnP/DLNA MediaRenderer — playback, volume, cast (`/status`, `/transport`,
+   `/position`, `/media`, `/protocol-info`, `/volume`, `/mute`, `/play` …,
+   `/cast`, `/soap`). It answers only while the projector is running; `/info`
+   (the device description) is cached by the server after the first fetch.
+   `/status` sees DLNA playback only: apps running on the projector (YouTube
+   etc.) are invisible there — use `GET /remote/device` for the foreground app.
+2. Proprietary protocols reconstructed from the official Aladdin X app —
+   popIn's TCP protocol (light, text, voice, deeplink, version / album / app
+   info) and the XGIMI GMSDK UDP protocol (keys, screenshot, memory, power
+   off, device info, LAN discovery): `/light`, `/key`, `/keyboard`, `/voice`,
+   `/deeplink`, `/remote/*`, `/discover`, `/memory/free`, `/capture`,
+   `/power/off`; TCP reachability via `POST /remote/ping`.
+
+Verified on the real unit (popIn Aladdin 2): light buttons, D-pad, `back`
+`menu` `vol_up` `vol_down` `power`, `/keyboard`, `/voice`, `/remote/ping`.
+Everything else on the proprietary side (`focus_*`, `*_long`, `settings`, app
+shortcut keys, `/remote/version` `/remote/album` `/remote/apps` `/remote/device`,
+`/discover`, `/deeplink`, `/memory/free`, `/capture`, `/power/off`) comes from
+static analysis of the app and is not yet confirmed to work.
+
+`GET /discover` always returns `[]` on this instance: the server runs on a
+Docker bridge network, so its LAN broadcast reaches no device.
+
+## Buttons and keys
+
+- `/light`: `on` / `off` set explicit states and `switch` toggles; `brighter` /
+  `darker` and `cooler` / `warmer` move one step each (use `repeat` for
+  several). `full` / `night` / `eco` / `sleep` send the app's preset buttons of
+  the same name (exact scene behaviour not documented). The light's on/off
+  state can't be read.
+- `/key`: `power` only opens the on-screen power menu; use `POST /power/off` to
+  switch the projector off. `/keyboard` types into the focused on-screen input,
+  so a text field must already be showing (navigate with `/key` first).
+- `POST /capture` returns `{"action": "capture", "image_url": …}`; the image
+  is served by the device, so fetch it from the device's LAN.
+
+Responses the document leaves untyped: `/play`, `/pause`, `/stop`, `/next`,
+`/previous` → `{"action": "<name>"}` (`/play` adds `speed`); `/cast` →
+`{"uri", "autoplay"}`; `/remote/ping` → `{"ok": true}`; `/memory/free` (asks
+the projector to free memory by closing background apps) →
+`{"action": "free_memory"}`; `/power/off` → `{"action": "power_off"}`;
+`/health` → `{"status": "ok", "host": <unit URL>}`.
+
+## Playback and casting
+
+- `/stop`, `/next` and `/previous` change DLNA playback — confirm with the user
+  first if something is playing. They don't affect apps such as YouTube.
+- `POST /cast` needs a media URL reachable from the device's LAN. It replaces
+  the current DLNA media even with `autoplay: false` — if something is being
+  watched (or you can't tell), confirm with the user first. The URI is set
+  before Play is sent, so if the call fails, check `GET /media` and
+  `GET /transport` before resending. `upnp_class` is free text
+  (`object.item.videoItem` by default; e.g. `object.item.audioItem`,
+  `object.item.imageItem`).
+
+## POST /power/off
 
 Powers the projector down. **Irreversible from this API — it cannot turn the
-unit back on. Confirm with the user first.**
-
-| Field   | Type    | Required     | Description                                                                                                                                                                                               |
-| ------- | ------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| confirm | boolean | yes (to act) | Body is required (none → 422). Send the JSON `true`; omitted or false-like (`false`, `"off"`, …) → 400. The API also coerces true-like strings (`"yes"`, `"TRUE"`, `1`), so never pass an unchecked value |
-
-Response: `{ "action": "power_off" }` (sent over UDP; 200 doesn't prove the
-unit received it).
-
----
+unit back on. Confirm with the user first.** The body is required (none →
+422). Send the JSON `true` for `confirm`; omitted or false-like (`false`,
+`"off"`, …) → 400. The API also coerces true-like strings (`"yes"`, `"TRUE"`,
+`1`), so never pass an unchecked value. The command is sent over UDP; a 200
+doesn't prove the unit received it.
 
 ## POST /soap
 
-Raw UPnP SOAP passthrough. Only the actions listed below are read-only; any
-other action (Play / Set* / an unlisted Get*) **requires `confirm: true`** and
-can change device state — confirm with the user before sending one, and
-prefer the typed endpoints above. `service`,
-`action` and the `args` keys must be XML names (`[A-Za-z_][A-Za-z0-9_.-]*`);
-unknown body fields are rejected.
-
-| Field   | Type    | Required | Description                                                |
-| ------- | ------- | -------- | ---------------------------------------------------------- |
-| service | string  | yes      | `AVTransport` / `RenderingControl` / `ConnectionManager`   |
-| action  | string  | yes      | SOAP action name                                           |
-| args    | object  | no       | Action arguments (most need `"InstanceID": 0`)             |
-| confirm | boolean | no*      | Required `true` unless the action is in the read-only list |
+Raw UPnP SOAP passthrough to `AVTransport` / `RenderingControl` /
+`ConnectionManager` (most actions need `"InstanceID": 0` in `args`). Only the
+actions below are read-only; any other action (Play / Set* / an unlisted Get*)
+**requires `confirm: true`** and can change device state — confirm with the
+user before sending one, and prefer the typed endpoints.
 
 Read-only (no `confirm` needed): `GetTransportInfo`, `GetPositionInfo`,
 `GetMediaInfo`, `GetTransportSettings`, `GetCurrentTransportActions`,
 `GetDeviceCapabilities`, `GetVolume`, `GetVolumeDB`, `GetVolumeDBRange`,
 `GetMute`, `ListPresets`, `GetProtocolInfo`, `GetCurrentConnectionIDs`,
-`GetCurrentConnectionInfo`.
-
-Unknown body fields are rejected (`extra=forbid`).
-
-Response: `{ "service": ..., "action": ..., "result": <SOAP response fields> }`
+`GetCurrentConnectionInfo`. The response is `{"service", "action",
+"result"}` with the SOAP response's out-arguments in `result`.

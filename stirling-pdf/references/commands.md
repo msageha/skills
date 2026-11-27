@@ -1,7 +1,9 @@
 # Stirling PDF Command Recipes
 
-Ready-to-run `curl` examples for the endpoints listed in
-[api-reference.md](api-reference.md). Base URL: `https://pdf-tools.msageha.net/api/v1`.
+Ready-to-run `curl` examples for common tasks. Every endpoint's parameters and
+request/response schema are in the server's OpenAPI document, and behaviour it
+doesn't show is in [api-reference.md](api-reference.md), which also explains
+how to look up the schema. Base URL: `https://pdf-tools.msageha.net/api/v1`.
 
 ## PDF to Markdown (for Obsidian)
 
@@ -110,6 +112,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/split-pages" \
   -F "pageNumbers=1,3,5-9" \
   -o split.zip   # split points: cut after pages 1, 3, 5, 6, 7, 8, 9
 
+# Removing pages — confirm with the user first
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/remove-pages" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=2,4" \
@@ -236,19 +239,22 @@ standard field you omit is removed from the document.
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/update-metadata" \
   -F "fileInput=@input.pdf" \
   -F "keepOmitted=true" \
-  --form-string "title=My Document" \
-  --form-string "author=Author Name" \
-  --form-string "subject=Subject" \
-  --form-string "keywords=keyword1,keyword2" \
+  --form-string "title=<title>" \
+  --form-string "author=<author>" \
+  --form-string "subject=<subject>" \
+  --form-string "keywords=<keyword1>,<keyword2>" \
   -o updated.pdf
 ```
 
 ## Add / Remove Password, Watermark
 
 ```bash
+# Adding or removing protection — confirm with the user first.
+# Keep passwords off the command line: curl reads a form value from a file with "<file"
+pwfile=$(mktemp); read -rs -p "PDF password: " PW; printf '%s' "$PW" > "$pwfile"; unset PW
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/add-password" \
   -F "fileInput=@input.pdf" \
-  --form-string "password=<password>" \
+  -F "password=<$pwfile" \
   -F "keyLength=256" \
   -o protected.pdf
 
@@ -257,8 +263,9 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/add-password" \
 # (sourcePassword); to remove everything, add -F "removeAll=true" with the permissions password
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/remove-password" \
   -F "fileInput=@input.pdf" \
-  --form-string "password=<current-password>" \
+  -F "password=<$pwfile" \
   -o unlocked.pdf
+rm -f "$pwfile"
 
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/add-watermark" \
   -F "fileInput=@input.pdf" \

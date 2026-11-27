@@ -21,8 +21,9 @@ Base URL: `https://epgstation.msageha.net/api` (EPGStation v2.10.0).
 - Always pass `isHalfWidth=true` for readable Japanese text.
 - Default `limit` is 24; paginate with `limit`/`offset`.
 - Genre IDs follow ARIB STD-B10 (see references/api-reference.md for the table).
-- Confirm with the user before creating or deleting a reservation or rule, and
-  before deleting a recorded program (irreversible).
+- Confirm with the user before creating or deleting a reservation or rule,
+  disabling a rule (it stops future auto-recordings), and before deleting a
+  recorded program (irreversible).
 - Search for a program first and show results before reserving it.
 
 ## Core operations
@@ -31,7 +32,7 @@ Base URL: `https://epgstation.msageha.net/api` (EPGStation v2.10.0).
 | ------------------------------------ | --------------------------------------------------------------------- |
 | Currently broadcasting               | `GET /schedules/broadcasting`                                         |
 | Channel list                         | `GET /channels`                                                       |
-| Channel schedule                     | `GET /schedules/{channelId}?days=N`                                   |
+| Channel schedule                     | `GET /schedules/{channelId}?startAt=<ms>&days=N&isHalfWidth=true`     |
 | Program detail                       | `GET /schedules/detail/{programId}`                                   |
 | Search programs                      | `POST /schedules/search`                                              |
 | Reserve (by program or time range)   | `POST /reserves`                                                      |
@@ -43,6 +44,7 @@ Base URL: `https://epgstation.msageha.net/api` (EPGStation v2.10.0).
 | Protect / delete recorded            | `PUT /recorded/{recordedId}/protect`, `DELETE /recorded/{recordedId}` |
 | Auto-recording rules                 | `POST /rules`, `GET /rules`, `PUT /rules/{ruleId}/enable\|disable`    |
 
-Full request/response schemas and ready-to-run curl examples: see
-[references/api-reference.md](references/api-reference.md) and
-[references/commands.md](references/commands.md).
+How to look up an endpoint's parameters and request/response schema in the
+OpenAPI document, behaviour it doesn't show, and the genre table: see
+[references/api-reference.md](references/api-reference.md). Ready-to-run curl
+examples: [references/commands.md](references/commands.md).

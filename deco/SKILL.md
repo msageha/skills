@@ -96,6 +96,7 @@ means one of these, not an API error.
 | Any other router operation                                                              | `POST /api/luci/...`, `POST /api/app/...`, `POST /raw`                                      |
 | Server health / explicit login                                                          | `GET /health`, `POST /login`, `POST /logout`                                                |
 
-Full request/response schemas and ready-to-run curl examples: see
-[references/api-reference.md](references/api-reference.md) and
-[references/commands.md](references/commands.md).
+Errors, behaviour the OpenAPI document doesn't describe, and how to look up an
+endpoint's request/response schema in it: see
+[references/api-reference.md](references/api-reference.md). Ready-to-run curl
+examples: [references/commands.md](references/commands.md).
