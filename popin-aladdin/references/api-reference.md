@@ -4,7 +4,8 @@ Base URL: `https://popin-aladdin.msageha.net/api`
 FastAPI wrapper (popin-aladdin-api v0.1.0) around the popIn Aladdin
 (ceiling-light projector, UPnP friendly name `Aladdin 2`). Requests to this
 instance don't need any authentication header/cookie; the reverse proxy admits
-only allowlisted LAN client IPs (`403` otherwise). Interactive docs:
+only allowlisted LAN client IPs and rejects requests whose `Origin` header
+names another site (`403` otherwise). Interactive docs:
 `https://popin-aladdin.msageha.net/docs`.
 
 Two control planes on the unit:
@@ -30,10 +31,10 @@ static analysis of the app and is not yet confirmed to work.
 | Status | Meaning                                                                                                                                            |
 | ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 400    | `confirm: true` missing on a `/soap` action that can change state, or on `/power/off`                                                              |
-| 403    | Reverse proxy rejected the caller's IP (nginx HTML page, not JSON)                                                                                 |
+| 403    | Reverse proxy rejected the caller's IP or a cross-site `Origin` (nginx HTML page, not JSON)                                                        |
 | 422    | Request body validation (unknown button / mode / package name, volume out of range, URI without scheme, …)                                         |
 | 502    | Device returned a SOAP fault or an unexpected answer — body has `detail`; for SOAP faults also `fault_code` (SOAP faultcode) and `upnp_error_code` |
-| 504    | Unit unreachable on the LAN (connection refused / timeout), or a UDP JSON command got no reply within the server's timeout                         |
+| 504    | Unit unreachable on the LAN (connection refused / timeout — DLNA endpoints while the projector isn't running), or no UDP reply in time             |
 
 UDP-based commands (`/key`, `/memory/free`, `/power/off`) don't wait for an
 answer: a 200 means the datagram was sent, not that the unit acted on it.
@@ -110,7 +111,8 @@ TCP reachability check of the proprietary control plane → `{ "ok": true }`.
 
 Broadcast on the LAN and list the Aladdins that answer; independent of the
 configured host. Query `wait` = seconds to wait for answers (0.5..15, default
-`3`). Response: array of
+`3`). On this instance it always returns `[]`: the server runs on a Docker
+bridge network, so the broadcast doesn't reach the LAN. Response: array of
 
 | Field      | Type    | Description                           |
 | ---------- | ------- | ------------------------------------- |
@@ -129,7 +131,8 @@ configured host. Query `wait` = seconds to wait for answers (0.5..15, default
 
 ### GET /info
 
-UPnP device description. All fields nullable.
+UPnP device description (cached by the server after the first fetch). All
+fields nullable except `services` and `description_url`.
 
 | Field                                         | Type     | Description                                                     |
 | --------------------------------------------- | -------- | --------------------------------------------------------------- |
@@ -229,7 +232,9 @@ Response: `{ "package", "installed", "version_code", "version_name" }`.
 
 ### POST /play / /pause / /stop / /next / /previous
 
-No body required (`/play` optionally takes `{ "speed": "1" }`).
+No body required (`/play` optionally takes `{ "speed": "1" }`). `/stop`,
+`/next` and `/previous` change DLNA playback — confirm with the user first if
+something is playing. They don't affect apps such as YouTube.
 Response: `{ "action": "<name>" }` (`/play` adds `"speed"`).
 
 ### POST /seek
@@ -244,15 +249,19 @@ Body: `{ "mode": ... }` — one of `NORMAL` / `REPEAT_ONE` / `REPEAT_ALL` /
 ### POST /cast
 
 Load (and by default play) a media URL on the projector. The URL must be
-reachable from the device's LAN. Replaces the current content.
+reachable from the device's LAN. Replaces the current DLNA media even with
+`autoplay: false` — if something is being watched (or you can't tell), confirm
+with the user first.
+The URI is set before Play is sent, so if the call fails, check `GET /media`
+and `GET /transport` before resending.
 
-| Field      | Type    | Required | Description                                                                           |
-| ---------- | ------- | -------- | ------------------------------------------------------------------------------------- |
-| uri        | string  | yes      | Absolute media URL (`://` required)                                                   |
-| title      | string  | no       | Title for the generated DIDL-Lite metadata (default `popin-aladdin-api`)              |
-| upnp_class | string  | no       | `object.item.videoItem` (default) / `object.item.audioItem` / `object.item.imageItem` |
-| metadata   | string  | no       | Explicit DIDL-Lite XML; auto-generated when omitted                                   |
-| autoplay   | boolean | no       | Send Play right after loading (default `true`)                                        |
+| Field      | Type    | Required | Description                                                                                                                        |
+| ---------- | ------- | -------- | ---------------------------------------------------------------------------------------------------------------------------------- |
+| uri        | string  | yes      | Absolute media URL starting with `<scheme>://`                                                                                     |
+| title      | string  | no       | Title for the generated DIDL-Lite metadata (default `popin-aladdin-api`)                                                           |
+| upnp_class | string  | no       | DIDL-Lite `upnp:class`, any string; default `object.item.videoItem` (others e.g. `object.item.audioItem`, `object.item.imageItem`) |
+| metadata   | string  | no       | Explicit DIDL-Lite XML; auto-generated when omitted                                                                                |
+| autoplay   | boolean | no       | Send Play right after loading (default `true`)                                                                                     |
 
 Response: `{ "uri": ..., "autoplay": true }`
 
@@ -300,7 +309,7 @@ Body: `{ "text": "..." }` — sends the text as if spoken to the voice assistant
 
 ### POST /deeplink
 
-Body: `{ "url": "..." }` — opens the URL scheme / intent on the device, i.e.
+Body: `{ "url": "..." }` (non-empty) — opens the URL scheme / intent on the device, i.e.
 launches an app (`https://www.youtube.com/tv`, `tver://`, …). Response echoes
 the body.
 
@@ -320,9 +329,9 @@ Response: `{ "action": "capture", "image_url": "http://172.16.1.113:.../....png"
 Powers the projector down. **Irreversible from this API — it cannot turn the
 unit back on. Confirm with the user first.**
 
-| Field   | Type    | Required | Description                   |
-| ------- | ------- | -------- | ----------------------------- |
-| confirm | boolean | yes      | Must be `true`, otherwise 400 |
+| Field   | Type    | Required     | Description                                                                                                                                                                                               |
+| ------- | ------- | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| confirm | boolean | yes (to act) | Body is required (none → 422). Send the JSON `true`; omitted or false-like (`false`, `"off"`, …) → 400. The API also coerces true-like strings (`"yes"`, `"TRUE"`, `1`), so never pass an unchecked value |
 
 Response: `{ "action": "power_off" }` (sent over UDP; 200 doesn't prove the
 unit received it).
@@ -331,9 +340,12 @@ unit received it).
 
 ## POST /soap
 
-Raw UPnP SOAP passthrough. Get-actions are treated as read-only; any other
-action (Play/Set*/…) **requires `confirm: true`** and can change device state
-— prefer the typed endpoints above.
+Raw UPnP SOAP passthrough. Only the actions listed below are read-only; any
+other action (Play / Set* / an unlisted Get*) **requires `confirm: true`** and
+can change device state — confirm with the user before sending one, and
+prefer the typed endpoints above. `service`,
+`action` and the `args` keys must be XML names (`[A-Za-z_][A-Za-z0-9_.-]*`);
+unknown body fields are rejected.
 
 | Field   | Type    | Required | Description                                                |
 | ------- | ------- | -------- | ---------------------------------------------------------- |

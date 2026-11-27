@@ -4,7 +4,8 @@ Base URL: `https://daikin.msageha.net/api`
 FastAPI wrapper (daikin-mck706a-api v0.1.0) around the Daikin MCK706A-W air
 purifier's local `dsiot` API (`POST /dsiot/multireq` on the unit). Requests to
 this instance don't need any authentication header/cookie; the reverse proxy
-admits only allowlisted LAN client IPs (`403` otherwise). Interactive docs:
+admits only allowlisted LAN client IPs and rejects requests whose `Origin`
+header names another site (`403` otherwise). Interactive docs:
 `https://daikin.msageha.net/docs`.
 
 Property semantics come from the official DAIKIN Smart App's air-purifier
@@ -22,7 +23,7 @@ unit (FW `3_15_0`, `api_ver 2_2`):
 
 | Status | Meaning                                                                                                                                                                                     |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 403    | Reverse proxy rejected the caller's IP (nginx HTML page, not JSON)                                                                                                                          |
+| 403    | Reverse proxy rejected the caller's IP or a cross-site `Origin` (nginx HTML page, not JSON)                                                                                                 |
 | 409    | Value not supported by the unit, or not selectable in the current state (`DaikinUnsupportedError`); nothing is written                                                                      |
 | 422    | Request validation error (missing or `false` `confirm`, invalid dsiot address/hex, unknown enum value)                                                                                      |
 | 502    | Unit returned an error or a value the server can't decode — body has `detail` and dsiot `rsc` (`200x` = success, `2004` on successful writes; `4000` bad parameter, `4041` no such address) |
@@ -110,8 +111,12 @@ Operation state and sensors (reads `adr_0100.dgc_status`). All fields nullable.
 
 The unit keeps separate course / fan-speed settings for the purify side and the
 humidify side; on the MCK706A a change on one side is mirrored to the other a
-few seconds later. Right after `POST /course`, re-read `GET /status` before
-relying on `humidity_setting`.
+few seconds later. `POST /humidity-setting` writes to the humidify-side
+course, so after changing the course while purifying only, wait until the
+humidify-side course has synced before setting the humidity — otherwise it
+goes to the previous course or 409. `GET /status` can't show this while
+purifying only (`course` is then the purify side); read `e_1002/e_3007/p_03`
+in `GET /tree` (its `value` is the course index in the wire order below).
 
 ### Values
 
@@ -255,7 +260,8 @@ Raw read of arbitrary dsiot addresses. Read-only, safe.
 | targets | string[] | yes      | Non-empty; each must start with `/dsiot/` (no `..`, no scheme) |
 
 Response: raw dsiot responses keyed by address (`fr`). Each has `rsc`
-(`200x` = OK) and a property-node tree `pc` — nodes carry `pn` (name),
+(`200x` = OK; errors such as `4041` come back inside the 200, so check each)
+and a property-node tree `pc` — nodes carry `pn` (name),
 `pt` (`1` = container with `pch` children, else leaf), `pv` (leaf value),
 `md` (encoding meta: `pt` = `b`/`i`/`s`, `mi`/`mx` = hex bounds or bitmask).
 
@@ -283,18 +289,25 @@ settings. Confirm with the user first and prefer the purpose-built endpoints
 (`/power`, `/humidify`, `/course`, `/fan-speed`, `/humidity-setting`) when
 they cover the need.**
 
-| Field       | Type     | Required | Description                                                             |
-| ----------- | -------- | -------- | ----------------------------------------------------------------------- |
-| to          | string   | yes      | dsiot container address, e.g. `/dsiot/edge/adr_0100.dgc_status`         |
-| entity_path | string[] | yes      | Property name chain under the root, e.g. `["e_1002", "e_A002", "p_01"]` |
-| pv          | string   | yes      | Little-endian hex value, even length, e.g. `"01"`                       |
-| confirm     | `true`   | yes      | Must be literally `true`; missing or `false` is rejected with 422       |
+| Field       | Type     | Required | Description                                                                                             |
+| ----------- | -------- | -------- | ------------------------------------------------------------------------------------------------------- |
+| to          | string   | yes      | dsiot container address, e.g. `/dsiot/edge/adr_0100.dgc_status`                                         |
+| entity_path | string[] | yes      | Non-empty property name chain under the root, each `[A-Za-z0-9_]+`, e.g. `["e_1002", "e_A002", "p_01"]` |
+| pv          | string   | yes      | Little-endian hex value, non-empty and even length, e.g. `"01"`                                         |
+| confirm     | `true`   | yes      | Must be literally `true`; missing or `false` is rejected with 422                                       |
 
-Unknown body fields are rejected (`extra=forbid`). The unit itself accepts
+Unknown body fields are rejected (`extra=forbid`); `confirm` must be the JSON
+`true` (`1` or `"true"` → 422). When probing a property, note its current
+value first, write only values within `md.mi`..`md.mx` (for enum-like ones, a
+value whose bit is set in the `md.mx` bitmask), read back, then restore the
+original. The unit itself accepts
 values outside its supported set, so check `GET /tree` first: for enum-like
 properties `max` is the bitmask of supported values. Writing an unsupported
-value (e.g. `01` to the changeover property, or a course index ≥ 11) leaves
-`GET /status` returning 502 until you restore a supported value with the
-matching setter or another `/write`.
+value that `/status` can't decode (e.g. `01` to the changeover property, or
+a course index ≥ 11) leaves `GET /status` returning 502 until you restore a
+supported value — with the setter that writes that property where one does
+(`/humidify` for the changeover; `/course` / `/fan-speed` for the current
+side), otherwise with another `/write` (e.g. the side not currently active). Properties
+outside `dgc_status` aren't in `GET /tree`; read them with `POST /read`.
 
 Response: `{ "written": { "to": ..., "entity_path": [...], "pv": ... }, "result": <dsiot response> }`

@@ -54,7 +54,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/word" \
 
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/html" \
   -F "fileInput=@input.pdf" \
-  -o output.html
+  -o output.zip   # ZIP with the HTML and its assets
 ```
 
 ## Markdown / HTML / URL / Office to PDF
@@ -104,7 +104,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/merge-pdfs" \
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/split-pages" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=1,3,5-9" \
-  -o split.zip
+  -o split.zip   # split points: cut after pages 1, 3, 5, 6, 7, 8, 9
 
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/remove-pages" \
   -F "fileInput=@input.pdf" \
@@ -116,6 +116,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/rotate-pdf" \
   -F "angle=90" \
   -o rotated.pdf
 
+# New order for a 4-page PDF; pages not listed are dropped
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/rearrange-pages" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=3,1,2,4" \
@@ -128,7 +129,6 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/rearrange-pages"
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/compress-pdf" \
   -F "fileInput=@input.pdf" \
   -F "optimizeLevel=5" \
-  -F "expectedOutputSize=25KB" \
   -o compressed.pdf
 ```
 
@@ -139,7 +139,8 @@ files are bundled in the deployed image (full/lite/ultra-lite variant) — check
 `languages` availability rather than assuming a fixed list.
 
 ```bash
-# Japanese + English OCR
+# Japanese + English OCR. Codes not installed on the server are dropped silently;
+# check one first by sending it alone (400 "none of the selected languages are valid" = not installed)
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/ocr-pdf" \
   -F "fileInput=@scanned.pdf" \
   -F "languages=jpn" \
@@ -187,7 +188,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/extract-images" \
 ```bash
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-page-numbers" \
   -F "fileInput=@input.pdf" \
-  -F "pageNumbers=all" \
+  -F "pagesToNumber=all" \
   -F "position=8" \
   -F "fontSize=12" \
   -F "fontType=helvetica" \
@@ -203,7 +204,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-stamp" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=all" \
   -F "stampType=text" \
-  -F "stampText=CONFIDENTIAL" \
+  --form-string "stampText=CONFIDENTIAL @date" \
   -F "fontSize=30" \
   -F "rotation=45" \
   -F "opacity=0.3" \
@@ -217,14 +218,13 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-stamp" \
 
 ## Update Metadata
 
-Standard fields you omit are removed from the document — resend every value
-you want to keep. `POST /analysis/document-properties` gives the current text
-fields; convert its dates to `yyyy/MM/dd HH:mm:ss` before resending, and pass
-`trapped` yourself (analysis doesn't return it).
+`keepOmitted=true` keeps the fields you don't send; without it, every
+standard field you omit is removed from the document.
 
 ```bash
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/update-metadata" \
   -F "fileInput=@input.pdf" \
+  -F "keepOmitted=true" \
   -F "title=My Document" \
   -F "author=Author Name" \
   -F "subject=Subject" \
@@ -237,13 +237,16 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/update-metadata" \
 ```bash
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/add-password" \
   -F "fileInput=@input.pdf" \
-  -F "password=mypassword" \
+  --form-string "password=<password>" \
   -F "keyLength=256" \
   -o protected.pdf
 
+# Removes the opening password; if the PDF also had restrictions, they stay under a new
+# random permissions password. To keep the original one, use selective removal
+# (sourcePassword); to remove everything, add -F "removeAll=true" with the permissions password
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/remove-password" \
   -F "fileInput=@input.pdf" \
-  -F "password=currentpassword" \
+  --form-string "password=<current-password>" \
   -o unlocked.pdf
 
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/add-watermark" \

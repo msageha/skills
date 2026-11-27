@@ -21,10 +21,29 @@ the caller isn't on that list, not an API error.
 
 - Session-based SID auth exists for password-protected instances (`POST /auth`,
   header/query/cookie `sid`) but isn't needed for this instance.
-- When disabling blocking, always pass a `timer` (seconds) unless the user
-  explicitly wants it disabled indefinitely — warn them either way.
+- When disabling blocking, always pass a positive `timer` (seconds) unless the
+  user explicitly wants it disabled indefinitely — warn them either way. `0`,
+  a negative value, `null` or no `timer` means no timer (indefinite); check
+  the `timer` in the response. The timer doesn't survive a Pi-hole restart
+  (blocking then stays off), so re-check the state if one happened.
 - Confirm with the user before modifying allow/deny lists, adding adlists, or
   running a gravity update (gravity update can take a while).
+- The set of block adlists and exact / regex allow rules is synced from files
+  in the local-home-services repository (`dns-server/config/adlists.list`,
+  `whitelist.txt`, `whitelist-regex.txt`) at startup and monthly: after the
+  next successful sync, entries added through the API are gone and entries
+  deleted through it are back (changes to `enabled` or groups of a listed
+  entry stay). Use the API for temporary changes and tell the user; for
+  lasting ones, the files have to change.
+- Judge success by curl's exit code and the HTTP status (`curl -sf`, or
+  `-o <file> -w '%{http_code}'`), not by `| jq` output: a failed request still exits 0
+  through the pipe. Adding several domains in one `POST /domains/…` returns
+  `201` even if some fail — check `processed.errors`. A gravity
+  update reports failure as `Gravity failed` at the end of a 200 body
+  (`409` = another run in progress).
+- `GET /search/{domain}` shows which lists contain a domain; it doesn't apply
+  group assignments or allow rules, so it doesn't prove a given client is
+  blocked — use the query log (`GET /queries?domain=…&client_ip=…`) for that.
 
 ## Core operations
 

@@ -4,6 +4,12 @@ Ready-to-run `curl` examples for the endpoints listed in
 [api-reference.md](api-reference.md). Base URL: `https://popin-aladdin.msageha.net/api`.
 Run requests sequentially — the server serializes them behind one device session.
 
+The examples pipe to `jq` for brevity, which hides failures: an error body run
+through a field filter just shows `null`s, and the pipe exits 0. Before
+trusting a filtered result, check the request: run with `set -o pipefail` and
+`curl -sf`, or save the body with `-o <file>` and read the status from
+`-w '%{http_code}'`.
+
 ## Health / Device Info
 
 ```bash
@@ -18,9 +24,6 @@ curl -s "https://popin-aladdin.msageha.net/api/remote/buttons" | jq .
 
 # Model / OS / storage / feature flags (TCP Version handshake)
 curl -s "https://popin-aladdin.msageha.net/api/remote/version" | jq .
-
-# Find Aladdins on the LAN (wait up to 3 s for answers)
-curl -s "https://popin-aladdin.msageha.net/api/discover?wait=3" | jq .
 ```
 
 ## What's on Screen
@@ -84,6 +87,9 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/mute" \
 
 ## Playback Control
 
+Stopping active playback (or skipping away from it) is visible in the room —
+confirm with the user first if something is playing.
+
 ```bash
 curl -s -X POST "https://popin-aladdin.msageha.net/api/play" | jq .
 curl -s -X POST "https://popin-aladdin.msageha.net/api/pause" | jq .
@@ -102,7 +108,12 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/play-mode" \
 
 ## Cast a Media URL (replaces current content)
 
-The URL must be reachable from the device's LAN.
+The URL must be reachable from the device's LAN. Casting replaces the DLNA
+media (even with `"autoplay": false`) — confirm first if something is being
+watched, or if you can't tell (`/status` only sees DLNA playback; the
+foreground app doesn't say whether it is playing). The URI is set before Play,
+so after a failure check `/media` (URI) and `/transport` (state) before
+resending.
 
 ```bash
 # Video (autoplay)
@@ -189,8 +200,9 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/power/off" \
 
 ## Raw SOAP Passthrough (advanced)
 
-Get-actions are read-only; anything else needs `confirm: true` — confirm with
-the user and prefer the typed endpoints.
+Only the read-only actions listed in api-reference.md (`GetTransportInfo`,
+`GetVolume`, `ListPresets`, …) skip `confirm`; anything else needs
+`confirm: true` — confirm with the user and prefer the typed endpoints.
 
 ```bash
 # Read transport info

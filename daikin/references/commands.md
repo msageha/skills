@@ -4,6 +4,12 @@ Ready-to-run `curl` examples for the endpoints listed in
 [api-reference.md](api-reference.md). Base URL: `https://daikin.msageha.net/api`.
 Run requests sequentially — the server serializes them behind one unit session.
 
+The examples pipe to `jq` for brevity, which hides failures: an error body run
+through a field filter just shows `null`s, and the pipe exits 0. Before
+trusting a filtered result, check the request: run with `set -o pipefail` and
+`curl -sf`, or save the body with `-o <file>` and read the status from
+`-w '%{http_code}'`.
+
 ## Health
 
 ```bash
@@ -99,13 +105,20 @@ curl -s -X POST "https://daikin.msageha.net/api/fan-speed" \
 Values: `low` `standard` `high` (MCK706A). Applies to the humidify-side
 course; 409 while that course is `smart` / `moist` (automatic).
 
+Right after `POST /course` while purifying only (`humidify: false`), first
+wait until the humidify-side course has synced — `/status.course` shows the
+purify side then. Read `e_1002/e_3007/p_03`; its `value` is the course index
+in wire order (`smart` 0, `manual` 1, `auto_fan` 2, `econo` 3, `pollen` 4,
+`moist` 5, `circulator` 6). Set the humidity only once it matches the new
+course; if it can't be read, don't set it.
+
 ```bash
+# 2 = auto_fan here; use the index of the course just set
+curl -sf "https://daikin.msageha.net/api/tree" | jq -e '."e_1002/e_3007/p_03".value == 2' >/dev/null \
+  || { echo "humidify-side course not synced yet"; exit 1; }
 curl -s -X POST "https://daikin.msageha.net/api/humidity-setting" \
   -H "Content-Type: application/json" \
   -d '{"humidity_setting": "standard"}' | jq .
-
-# The two sides sync a few seconds after a course change — re-read before trusting humidity_setting
-curl -s "https://daikin.msageha.net/api/status" | jq '{humidify, course, humidity_setting}'
 ```
 
 ## Device Info
@@ -146,15 +159,25 @@ curl -s -X POST "https://daikin.msageha.net/api/read" \
 
 Prefer `/power`, `/humidify`, `/course`, `/fan-speed`, `/humidity-setting`
 when they cover the need. `pv` is a little-endian even-length hex string.
-Check the property in `GET /tree` first — for enum-like properties `max` is a
-bitmask of supported values, and an unsupported value breaks `/status` (502)
-until restored.
+Read the property first (`GET /tree` for `dgc_status`, `POST /read` for other
+containers — go on only if the target's `rsc` is `200x` and the property
+exists) and note its `pv`; keep the new value within `min`..`max` (for
+enum-like properties `max` is a bitmask of supported values — an undecodable
+value breaks `/status` with 502 until restored). Read back afterwards, and
+restore the original when probing.
 
 ```bash
+# Before: note the current value; stop if the property can't be read
+curl -sf "https://daikin.msageha.net/api/tree" | jq -e '."e_1002/e_A002/p_01" // empty' \
+  || { echo "property not found"; exit 1; }
+
 # Equivalent of power off via raw write
 curl -s -X POST "https://daikin.msageha.net/api/write" \
   -H "Content-Type: application/json" \
   -d '{"to": "/dsiot/edge/adr_0100.dgc_status",
        "entity_path": ["e_1002", "e_A002", "p_01"],
        "pv": "00", "confirm": true}' | jq .
+
+# After: read back
+curl -s "https://daikin.msageha.net/api/tree" | jq '."e_1002/e_A002/p_01"'
 ```

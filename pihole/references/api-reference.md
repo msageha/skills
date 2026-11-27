@@ -1,8 +1,8 @@
 # Pi-hole API Reference
 
 Base URL: `https://pihole.msageha.net/api`
-Pi-hole REST API v6 (docker image `pihole/pihole:2026.09.0`: core v6.4.3 /
-web v6.6 / FTL v6.7.1). Requests to this instance don't need any
+Pi-hole REST API v6 (docker image `pihole/pihole:2026.11.0`: core v6.6 /
+web v6.6.1 / FTL v6.9). Requests to this instance don't need any
 authentication header/cookie; the reverse proxy admits only allowlisted LAN
 client IPs (`403` with an nginx HTML page otherwise).
 
@@ -101,10 +101,10 @@ Get current blocking status.
 
 Change blocking status.
 
-| Field    | Type         | Description                                                              |
-| -------- | ------------ | ------------------------------------------------------------------------ |
-| blocking | boolean      | `true` = enable (default), `false` = disable                             |
-| timer    | number\|null | Seconds until auto-reverse (null = permanent, or clears an active timer) |
+| Field    | Type         | Description                                                                                                                           |
+| -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
+| blocking | boolean      | Required (omitted → 400). `true` = enable, `false` = disable                                                                          |
+| timer    | number\|null | Seconds until auto-reverse; only a positive number sets a timer (`0`, negative, `null` or omitted = none, and clears an active timer) |
 
 ---
 
@@ -150,21 +150,21 @@ Upstream DNS destination metrics / DNS query type distribution. No required para
 
 Recent DNS query log. All parameters optional.
 
-| Parameter    | Type    | Description                                                                              |
-| ------------ | ------- | ---------------------------------------------------------------------------------------- |
-| length       | integer | Number of results (default: 100)                                                         |
-| start        | integer | Pagination offset                                                                        |
-| from / until | number  | Unix timestamp range                                                                     |
-| domain       | string  | Filter by domain (wildcards `*` supported)                                               |
-| client_ip    | string  | Filter by client IP (wildcards supported)                                                |
-| client_name  | string  | Filter by client hostname (wildcards supported)                                          |
-| upstream     | string  | Filter by upstream                                                                       |
-| type         | string  | Filter by query type (A, AAAA, etc.)                                                     |
-| status       | string  | Filter by status (GRAVITY, FORWARDED, CACHE, etc.)                                       |
-| reply        | string  | Filter by reply type (NODATA, NXDOMAIN, etc.)                                            |
-| dnssec       | string  | Filter by DNSSEC status                                                                  |
-| disk         | boolean | `true` = query the on-disk long-term DB instead of the in-memory buffer (default: false) |
-| cursor       | integer | Database ID for pagination                                                               |
+| Parameter    | Type    | Description                                                                                                                                                                                                                |
+| ------------ | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| length       | integer | Number of results (default: 100; at most 10000 per response — page with `cursor` / `start` for more)                                                                                                                       |
+| start        | integer | Offset for paging: send the same `length` (1-10000) each time and advance `start` by it, keeping the same filters. New queries keep arriving, so bound the set with `until` (and keep the first `cursor`) for stable pages |
+| from / until | number  | Unix timestamp range                                                                                                                                                                                                       |
+| domain       | string  | Filter by domain (wildcards `*` supported)                                                                                                                                                                                 |
+| client_ip    | string  | Filter by client IP (wildcards supported)                                                                                                                                                                                  |
+| client_name  | string  | Filter by client hostname (wildcards supported)                                                                                                                                                                            |
+| upstream     | string  | Filter by upstream                                                                                                                                                                                                         |
+| type         | string  | Filter by query type (A, AAAA, etc.)                                                                                                                                                                                       |
+| status       | string  | Filter by status (GRAVITY, FORWARDED, CACHE, etc.)                                                                                                                                                                         |
+| reply        | string  | Filter by reply type (NODATA, NXDOMAIN, etc.)                                                                                                                                                                              |
+| dnssec       | string  | Filter by DNSSEC status                                                                                                                                                                                                    |
+| disk         | boolean | `true` = query the on-disk long-term DB instead of the in-memory buffer (default: false)                                                                                                                                   |
+| cursor       | integer | Upper bound of query IDs while paging (send back the first response's value; it doesn't advance). Rows can still age out of the in-memory log meanwhile                                                                    |
 
 **Response:**
 
@@ -181,12 +181,12 @@ Recent DNS query log. All parameters optional.
       "client": { "ip": "192.168.1.100", "name": "my-pc" },
       "upstream": "1.1.1.1#53",
       "reply": { "type": "IP", "time": 0.025 },
-      "list_id": -6,
+      "list_id": null,
       "ede": { "code": -1, "text": null },
       "cname": null
     }
   ],
-  "cursor": 12300,
+  "cursor": 12345,
   "recordsTotal": 65409,
   "recordsFiltered": 65409,
   "draw": 0,
@@ -194,8 +194,10 @@ Recent DNS query log. All parameters optional.
 }
 ```
 
-- `list_id`: which adlist/gravity list caused a block (negative for special
-  categories like gravity, positive for a specific list ID)
+- `list_id`: the entry that decided the query. A negative value is an adlist
+  (gravity / antigravity match) encoded as `-(id + 2)` — `-6` is adlist `4` in
+  `GET /lists`; a non-negative value is a `domainlist` ID (exact / regex
+  rule); `null` if none
 - `ede`: Extended DNS Error info (`code: -1` = none)
 - `cname`: the CNAME record that led to this query being blocked, if any
 
@@ -280,6 +282,9 @@ Add a domain. Both `{type}` (`allow`/`deny`) and `{kind}` (`exact`/`regex`) requ
 | groups  | integer[]          | no       | Group IDs (default: `[0]`)                    |
 | enabled | boolean            | no       | Whether the entry is active (default: `true`) |
 
+Returns `201` even when some domains fail; failed items are listed in
+`processed.errors`.
+
 #### PUT /domains/{type}/{kind}/{domain}
 
 Full update of a domain entry; can move it between type/kind.
@@ -357,18 +362,18 @@ Adlists (blocklists/allowlists). `type` (`allow`/`block`) optional on GET
 
 **Response item:**
 
-| Field                                     | Type      | Description                                                               |
-| ----------------------------------------- | --------- | ------------------------------------------------------------------------- |
-| address                                   | string    | List URL                                                                  |
-| enabled                                   | boolean   | Whether list is active                                                    |
-| comment                                   | string    | Optional comment                                                          |
-| type                                      | string    | `allow` / `block`                                                         |
-| groups                                    | integer[] | Associated group IDs (default: `[0]`)                                     |
-| number                                    | integer   | Number of entries                                                         |
-| invalid_domains                           | integer   | Count of malformed entries skipped on last update                         |
-| abp_entries                               | integer   | Count of Adblock Plus-style entries in the list                           |
-| date_added / date_modified / date_updated | integer   | Unix timestamps                                                           |
-| status                                    | integer   | Download status (`1` = OK, `2` = OK with warnings, seen on this instance) |
+| Field                                     | Type      | Description                                                                                                                                  |
+| ----------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| address                                   | string    | List URL                                                                                                                                     |
+| enabled                                   | boolean   | Whether list is active                                                                                                                       |
+| comment                                   | string    | Optional comment                                                                                                                             |
+| type                                      | string    | `allow` / `block`                                                                                                                            |
+| groups                                    | integer[] | Associated group IDs (default: `[0]`)                                                                                                        |
+| number                                    | integer   | Number of entries                                                                                                                            |
+| invalid_domains                           | integer   | Count of malformed entries skipped on last update                                                                                            |
+| abp_entries                               | integer   | Count of Adblock Plus-style entries in the list                                                                                              |
+| date_added / date_modified / date_updated | integer   | Unix timestamps                                                                                                                              |
+| status                                    | integer   | Last gravity result: `1` = updated, `2` = unchanged, `3` = download failed (previous copy used), `4` = download failed (no copy, list empty) |
 
 #### POST /lists
 
@@ -385,19 +390,19 @@ Adlists (blocklists/allowlists). `type` (`allow`/`block`) optional on GET
 
 #### PUT /lists/{list} / DELETE /lists/{list}
 
-Update or remove an adlist. `type` is required on `DELETE` too.
+Update or remove an adlist. The `type` query parameter is required on `PUT` and `DELETE` too.
 `{list}` is the URL-encoded address. Batch variant: `POST /lists:batchDelete`.
 
 ---
 
 ### Actions
 
-| Endpoint                     | Description                                                                              |
-| ---------------------------- | ---------------------------------------------------------------------------------------- |
-| `POST /action/gravity`       | Re-download all adlists. Response streamed as `text/plain`.                              |
-| `POST /action/restartdns`    | Restart the pihole-FTL DNS service.                                                      |
-| `POST /action/flush/logs`    | Flush DNS logs and purge last 24h from the DB.                                           |
-| `POST /action/flush/network` | Flush the network table (remove all known devices). Replaces the deprecated `flush/arp`. |
+| Endpoint                     | Description                                                                                                                                                                                                                                                                                                                                                                      |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /action/gravity`       | Re-download all adlists. Response streamed as `text/plain`, always `200` once streaming starts: a failure shows as `Gravity failed` at the end of the body. `409` = another gravity run is in progress. Afterwards check each list's `status`; `gravity.last_update` in `/stats/summary` is the update time, not proof that DNS uses the new data (check the query log for that) |
+| `POST /action/restartdns`    | Restart the pihole-FTL DNS service.                                                                                                                                                                                                                                                                                                                                              |
+| `POST /action/flush/logs`    | Flush DNS logs and purge last 24h from the DB.                                                                                                                                                                                                                                                                                                                                   |
+| `POST /action/flush/network` | Flush the network table (remove all known devices). Replaces the deprecated `flush/arp`.                                                                                                                                                                                                                                                                                         |
 
 ---
 
