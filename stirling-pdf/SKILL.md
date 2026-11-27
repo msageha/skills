@@ -27,8 +27,9 @@ file directly; `/analysis/*` and `/info/status` return JSON.
   Exception: `/convert/url/pdf` rejects a URL with a `303` redirect, which
   `-f` passes — check that the status is `200` there.
 - Send user-supplied text (passwords, `stampText`, metadata) with
-  `--form-string`: `-F` reads a value starting with `@` or `<` as a local file
-  and splits off `;type=…`.
+  `--form-string` in single quotes (write a `'` in the value as `'\''`): `-F`
+  reads a value starting with `@` or `<` as a local file and splits off
+  `;type=…`, and double quotes expand `$` and backticks.
 - OCR `languages` not installed on the server are dropped silently; list the
   installed ones with `GET /ui-data/ocr-pdf` before OCR.
 - `pageNumbers` supports ranges: `1,3,5-9`, `all`, or expressions like `2n+1`.

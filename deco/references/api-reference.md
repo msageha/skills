@@ -22,27 +22,14 @@ request fields, enums and response models, with descriptions in Japanese. Look
 up one operation instead of reading the whole document:
 
 ```bash
-set -o pipefail  # a failed download must fail the command
-# List operations (the luci / app operations are listed in commands.md)
+# List operations (the luci / app ones are in commands.md). Paths in the document
+# start with /api, the Base URL's path
 curl -sf "https://deco-api.msageha.net/openapi.json" | jq -er '.paths | to_entries[]
   | select(.key | test("^/api/(luci|app)/") | not)
   | .key as $p | .value | to_entries[] | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
 
-# One operation with its schemas inlined — set --arg path / --arg method
-curl -sf "https://deco-api.msageha.net/openapi.json" | jq -e --arg path /api/wireless/config --arg method post '
-  . as $root
-  | def deref($seen):
-      if type == "object" then
-        if has("$ref") then (."$ref" | split("/") | last) as $n
-          | (if ($seen | index($n)) then {"$ref": $n} else ($root.components.schemas[$n] | deref($seen + [$n])) end)
-            + (del(."$ref") | deref($seen))
-        else map_values(deref($seen)) end
-      elif type == "array" then map(deref($seen)) else . end;
-    .paths[$path][$method]
-    | {summary, description, parameters, request: .requestBody,
-       responses: (.responses | with_entries(.value |= if .content and (.description != "Validation Error") then .content else .description end)),
-       destructive: ."x-deco-destructive"}
-    | deref([])'
+# One operation with its $refs inlined (<skill-dir>: the directory of this skill's SKILL.md)
+curl -sf "https://deco-api.msageha.net/openapi.json" | jq -e -f "<skill-dir>/scripts/openapi-operation.jq" --arg method post --arg path /api/wireless/config
 ```
 
 Most `GET` endpoints return the decrypted router response as-is (untyped in
@@ -54,6 +41,12 @@ and keep unknown router fields. `/dashboard` itself is an aggregate with
 exactly its documented fields (`internet_online`, `deco_count`,
 `online_clients` and `decos` always set): a field missing there may still be
 in the full router response (`/network/wan`, `/devices`, …).
+
+Responses the document leaves untyped (besides the raw router ones):
+`POST /reboot` → `{"rebooting": [<MAC>, ...]}`; `POST /wireless` →
+`{"updated": {"<band>": {"<network>": {"enable": ...}}}}`; `POST /login` /
+`POST /logout` → `{"logged_in": <bool>}`; `GET /system/log` →
+`{"totalNum": <pages at this limit>, "currentIndex": <index>, "logList": [{"content": "..."}]}`.
 
 Units and meanings the schemas don't state:
 
@@ -121,9 +114,9 @@ one path queue up):
   whole band whatever `network` is. Current guest-only values
   (`host_isolation`, `access_duration`, `bandwidth_limit`) come from
   `POST /api/app/wireless/wlan/read`. `null` values in `settings` are dropped
-  (they don't clear anything), so at least one non-null field is needed.
-  `bandwidth_limit` needs at least one
-  non-null field (`{}` → 422). Only `updated.*.password` is masked in
+  (they don't clear anything), so `settings` needs at least one non-null
+  field, and so does `bandwidth_limit` (`{}` → 422). Only
+  `updated.<band>.<network>.password` is masked in
   the response; show `updated` rather than the whole body (`result` is the raw
   router answer).
 
@@ -172,17 +165,16 @@ Paths used internally by the typed endpoints (useful starting points):
 `admin/<module>?form=<form>` (`locale` has no `admin/`); `POST
 /api/app/<controller>/<form>/<operation>` calls the TMP opcode the Deco app
 uses. They cover the operations catalogued from the FW 1.3.0 image (154 luci
+and 384 TMP); `/api/app/...` also covers features luci lacks (port forwarding,
+DHCP leases, HomeShield, QoS, Wi-Fi schedules, VPN, LEDs, …). Each entry in the
+OpenAPI document carries `x-deco-luci-path` or `x-deco-tmp-opcode`,
+`x-deco-operation` and `x-deco-destructive`.
 
-- 384 TMP); `/api/app/...` also covers features luci lacks (port forwarding,
-  DHCP leases, HomeShield, QoS, Wi-Fi schedules, VPN, LEDs, …). Each entry in the
-  OpenAPI document carries `x-deco-luci-path` or `x-deco-tmp-opcode`,
-  `x-deco-operation` and `x-deco-destructive`.
-
-* The body is `{"params": {...}}` (optional), sent to the router unvalidated:
+- The body is `{"params": {...}}` (optional), sent to the router unvalidated:
   required fields differ per operation and firmware, and a rejected value is
   `502`. The `read` / `get` response of the same form shows the shape to write
   back. The response is the router's success body (`result` / `data`) as-is.
-* Destructive operations (`x-deco-destructive: true`, 68 of them) also need
+- Destructive operations (`x-deco-destructive: true`, 68 of them) also need
   `"confirm": true`: anything that cuts the Deco or the whole network off
   (reboot, factory reset, firmware upgrade, WAN disconnect, LAN / WAN / mesh /
   IPTV connection settings, port media, operation mode, main node, mesh
@@ -190,15 +182,15 @@ uses. They cover the operations catalogued from the FW 1.3.0 image (154 luci
   TP-Link ID changes, clearing logs, history, reports, messages). Other writes
   — Wi-Fi, VPN, LEDs, reservations, port forwarding, blocking — run without
   `confirm`, so confirm with the user yourself.
-* Use `POST /wireless` / `POST /wireless/config` (or
+- Use `POST /wireless` / `POST /wireless/config` (or
   `/api/app/wireless/wlan/write`) for Wi-Fi writes: luci's
   `/api/luci/wireless/wlan/write` fails guest writes with HTTP 500.
-* OpenVPN profile insert/update (`/api/app/vpn_client/server/{insert,update}`)
+- OpenVPN profile insert/update (`/api/app/vpn_client/server/{insert,update}`)
   needs a config file already uploaded to the router; this API can't upload
   files, so set OpenVPN up in the Deco app.
-* Responses return what the router stores, including Wi-Fi / PPPoE / VPN
+- Responses return what the router stores, including Wi-Fi / PPPoE / VPN
   passwords and WireGuard keys — don't print them unless asked.
-* Not exposed: pre-login steps, mesh node-to-node calls, debug opcodes,
+- Not exposed: pre-login steps, mesh node-to-node calls, debug opcodes,
   multipart / file transfer forms (config backup / restore, firmware
   upload), and reads that return the admin password or cloud tokens.
 

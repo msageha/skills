@@ -1,9 +1,8 @@
 # EPGStation Command Recipes
 
-Ready-to-run `curl` examples for common tasks. Every endpoint's parameters and
-request/response schema are in the server's OpenAPI document, and behaviour it
-doesn't show is in [api-reference.md](api-reference.md), which also explains
-how to look up the schema. Base URL: `https://epgstation.msageha.net/api`.
+Ready-to-run `curl` examples for common tasks. For other endpoints and for
+request/response schemas, see [api-reference.md](api-reference.md): how to look
+them up in the server's OpenAPI document, and what the document leaves out. Base URL: `https://epgstation.msageha.net/api`.
 
 The examples use `curl -s` for brevity, which exits 0 on an HTTP error, and pipe
 to `jq`, which turns an error body into `null`s. Before reporting a write as
@@ -111,7 +110,7 @@ curl -s "https://epgstation.msageha.net/api/recording?isHalfWidth=true" | jq '[.
 curl -s "https://epgstation.msageha.net/api/recorded?isHalfWidth=true&limit=20" | jq '[.records[] | {id, name, channelId, start: (.startAt / 1000 + 32400 | strftime("%Y-%m-%d %H:%M")), isRecording, isProtected}]'
 
 # filtered by keyword
-curl -s "https://epgstation.msageha.net/api/recorded?isHalfWidth=true&keyword=キーワード&limit=20" | jq '[.records[] | {id, name, start: (.startAt / 1000 + 32400 | strftime("%Y-%m-%d %H:%M"))}]'
+curl -s -G "https://epgstation.msageha.net/api/recorded" -d isHalfWidth=true -d limit=20 --data-urlencode 'keyword=<keyword>' | jq '[.records[] | {id, name, start: (.startAt / 1000 + 32400 | strftime("%Y-%m-%d %H:%M"))}]'
 ```
 
 ## Delete / Protect / Unprotect Recorded Program
@@ -125,7 +124,7 @@ curl -s -X PUT "https://epgstation.msageha.net/api/recorded/{recordedId}/unprote
 
 ## Add Auto-Recording Rule
 
-Confirm with the user before adding, deleting or disabling a rule.
+Confirm with the user before adding, editing, enabling, disabling or deleting a rule.
 
 ```bash
 curl -s -X POST "https://epgstation.msageha.net/api/rules" \
@@ -155,7 +154,7 @@ curl -s -X POST "https://epgstation.msageha.net/api/rules" \
 ```bash
 curl -s "https://epgstation.msageha.net/api/rules?offset=0&limit=20" | jq '[.rules[] | {id, keyword: .searchOption.keyword, enable: .reserveOption.enable, reservesCnt}]'
 
-# Deleting or disabling a rule — confirm with the user first
+# Deleting, disabling or enabling a rule — confirm with the user first
 curl -s -X DELETE "https://epgstation.msageha.net/api/rules/{ruleId}"
 curl -s -X PUT "https://epgstation.msageha.net/api/rules/{ruleId}/disable"
 curl -s -X PUT "https://epgstation.msageha.net/api/rules/{ruleId}/enable"

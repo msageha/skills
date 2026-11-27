@@ -1,9 +1,8 @@
 # Deco BE85 Command Recipes
 
-Ready-to-run `curl` examples for common tasks. Every endpoint's parameters and
-request/response schema are in the server's OpenAPI document, and behaviour it
-doesn't show is in [api-reference.md](api-reference.md), which also explains
-how to look up the schema. Base URL: `https://deco-api.msageha.net/api`
+Ready-to-run `curl` examples for common tasks. For other endpoints and for
+request/response schemas, see [api-reference.md](api-reference.md): how to look
+them up in the server's OpenAPI document, and what the document leaves out. Base URL: `https://deco-api.msageha.net/api`
 (`deco.msageha.net` without `-api` is the router's web UI).
 Run requests sequentially — the server serializes them per router session.
 

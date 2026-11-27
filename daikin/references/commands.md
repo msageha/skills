@@ -1,9 +1,8 @@
 # Daikin MCK706A Command Recipes
 
-Ready-to-run `curl` examples for common tasks. Every endpoint's parameters and
-request/response schema are in the server's OpenAPI document, and behaviour it
-doesn't show is in [api-reference.md](api-reference.md), which also explains
-how to look up the schema. Base URL: `https://daikin.msageha.net/api`.
+Ready-to-run `curl` examples for common tasks. For other endpoints and for
+request/response schemas, see [api-reference.md](api-reference.md): how to look
+them up in the server's OpenAPI document, and what the document leaves out. Base URL: `https://daikin.msageha.net/api`.
 Run requests sequentially — the server serializes them behind one unit session.
 
 The examples use `curl -s` for brevity, which exits 0 on an HTTP error, and pipe

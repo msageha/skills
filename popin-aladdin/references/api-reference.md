@@ -21,25 +21,12 @@ required flags, enums and response models, with descriptions in Japanese. Look
 up one operation instead of reading the whole document:
 
 ```bash
-set -o pipefail  # a failed download must fail the command
-# List operations
+# List operations. Paths in the document start with /api, the Base URL's path
 curl -sf "https://popin-aladdin.msageha.net/openapi.json" | jq -er '.paths | to_entries[]
   | .key as $p | .value | to_entries[] | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
 
-# One operation with its schemas inlined — set --arg path / --arg method
-curl -sf "https://popin-aladdin.msageha.net/openapi.json" | jq -e --arg path /api/cast --arg method post '
-  . as $root
-  | def deref($seen):
-      if type == "object" then
-        if has("$ref") then (."$ref" | split("/") | last) as $n
-          | (if ($seen | index($n)) then {"$ref": $n} else ($root.components.schemas[$n] | deref($seen + [$n])) end)
-            + (del(."$ref") | deref($seen))
-        else map_values(deref($seen)) end
-      elif type == "array" then map(deref($seen)) else . end;
-    .paths[$path][$method]
-    | {summary, description, parameters, request: .requestBody,
-       responses: (.responses | with_entries(.value |= if .content and (.description != "Validation Error") then .content else .description end))}
-    | deref([])'
+# One operation with its $refs inlined (<skill-dir>: the directory of this skill's SKILL.md)
+curl -sf "https://popin-aladdin.msageha.net/openapi.json" | jq -e -f "<skill-dir>/scripts/openapi-operation.jq" --arg method post --arg path /api/cast
 ```
 
 `GET /remote/buttons` lists the button names without touching the device:
@@ -103,7 +90,7 @@ Docker bridge network, so its LAN broadcast reaches no device.
 
 Responses the document leaves untyped: `/play`, `/pause`, `/stop`, `/next`,
 `/previous` → `{"action": "<name>"}` (`/play` adds `speed`); `/cast` →
-`{"uri", "autoplay"}`; `/remote/ping` → `{"ok": true}`; `/memory/free` (asks
+`{"uri", "autoplay"}`; `/play-mode` → `{"play_mode": "<mode>"}`; `/remote/ping` → `{"ok": true}`; `/memory/free` (asks
 the projector to free memory by closing background apps) →
 `{"action": "free_memory"}`; `/power/off` → `{"action": "power_off"}`;
 `/health` → `{"status": "ok", "host": <unit URL>}`.
@@ -116,9 +103,7 @@ the projector to free memory by closing background apps) →
   the current DLNA media even with `autoplay: false` — if something is being
   watched (or you can't tell), confirm with the user first. The URI is set
   before Play is sent, so if the call fails, check `GET /media` and
-  `GET /transport` before resending. `upnp_class` is free text
-  (`object.item.videoItem` by default; e.g. `object.item.audioItem`,
-  `object.item.imageItem`).
+  `GET /transport` before resending.
 
 ## POST /power/off
 

@@ -17,26 +17,14 @@ field is omitted), enums and descriptions. Interactive docs:
 instead of reading the whole document:
 
 ```bash
-set -o pipefail  # a failed download must fail the command
-# Find operations by keyword (path or summary), e.g. "split", "watermark"
+# Find operations whose path or summary contains a word, e.g. "split", "watermark"
 curl -sf "https://pdf-tools.msageha.net/v1/api-docs" | jq -er --arg q "<keyword>" '.paths | to_entries[]
-  | .key as $p | .value | to_entries[] | select(($p + " " + (.value.summary // "")) | test($q; "i"))
+  | .key as $p | .value | to_entries[] | select(($p + " " + (.value.summary // "")) | ascii_downcase | contains($q | ascii_downcase))
   | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
 
-# One operation with its schemas inlined — paths in the document start with /api/v1
-curl -sf "https://pdf-tools.msageha.net/v1/api-docs" | jq -e --arg path /api/v1/misc/add-stamp --arg method post '
-  . as $root
-  | def deref($seen):
-      if type == "object" then
-        if has("$ref") then (."$ref" | split("/") | last) as $n
-          | (if ($seen | index($n)) then {"$ref": $n} else ($root.components.schemas[$n] | deref($seen + [$n])) end)
-            + (del(."$ref") | deref($seen))
-        else map_values(deref($seen)) end
-      elif type == "array" then map(deref($seen)) else . end;
-    .paths[$path][$method]
-    | {summary, description, parameters, request: .requestBody,
-       responses: (.responses | with_entries(.value |= if .content and (.description != "Validation Error") then .content else .description end))}
-    | deref([])'
+# One operation with its $refs inlined (<skill-dir>: the directory of this skill's SKILL.md).
+# Paths in the document start with /api/v1
+curl -sf "https://pdf-tools.msageha.net/v1/api-docs" | jq -e -f "<skill-dir>/scripts/openapi-operation.jq" --arg method post --arg path /api/v1/misc/add-stamp
 ```
 
 The operation `description` ends with `Input:<type> Output:<type>` (e.g.
@@ -67,8 +55,6 @@ Pages
 - `POST /general/remove-pages`: the OpenAPI default `all` doesn't apply —
   omitting `pageNumbers`, or listing every page, is `400`. Send the pages to
   remove.
-- `POST /general/rearrange-pages` drops pages not listed in `pageNumbers` (a
-  page listed twice is kept once): list every page to keep them all.
 
 Compression and OCR
 

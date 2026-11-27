@@ -4,11 +4,12 @@
 
 ## 構成
 
-- 各 skill は `<name>/SKILL.md` と、必要なら `<name>/references/*.md` から成る 1 ディレクトリ。frontmatter の `name` はディレクトリ名と一致させる。
+- 各 skill は `<name>/SKILL.md` と、必要なら `<name>/references/*.md`・`<name>/scripts/` から成る 1 ディレクトリ。frontmatter の `name` はディレクトリ名と一致させる。
 - skill は 1 ディレクトリ単位で symlink または copy されて使われるため、self-contained に書く。他 skill への参照は、同時に配置される前提の `../<skill>/` に限る (cognitive-rhythm-writing が japanese-tech-writing を読む形)。
 - REST 系 skill は SKILL.md (要点と endpoint 表)・`references/api-reference.md`・`references/commands.md` (curl 例) の 3 層。Base URL や「確認してから実行する操作」など安全に関わる事実は 3 層で一致させる。
-- サーバーが JSON の OpenAPI を配信する skill (daikin・deco・popin-aladdin・stirling-pdf・epgstation) の api-reference には、OpenAPI の場所と 1 操作を `$ref` 解決込みで抜き出す jq の例、OpenAPI に無いか誤っている事実 (エラー・単位・配置の事実・多段手順・実機の挙動) だけを書き、OpenAPI にある field・型・必須・default・enum は転記しない。転記は版が上がるたびに実装とずれるため。Pi-hole の OpenAPI は複数の YAML に分かれ、`curl` と `jq` だけでは引けないので、pihole は schema を api-reference に持つ。
-- `scripts/` は配布 (install) 用で、skill 本体からは参照しない。
+- サーバーが JSON の OpenAPI を配信する skill (daikin・deco・popin-aladdin・stirling-pdf・epgstation) の api-reference には、OpenAPI の場所と、1 操作を `$ref` 解決込みで抜き出す `scripts/openapi-operation.jq` の呼び出し例、OpenAPI に無いか誤っている事実 (エラー・単位・配置の事実・多段手順・実機の挙動) だけを書き、OpenAPI にある field・型・必須・default・enum は転記しない。転記は版が上がるたびに実装とずれるため。Pi-hole の OpenAPI は複数の YAML に分かれ、`curl` と `jq` だけでは引けないので、pihole は schema を api-reference に持つ。
+- `scripts/openapi-operation.jq` は上の 5 skill が同じ内容で持つ (copy で配置されると skill の外を参照できないため)。変えるときは 5 つを揃えて変える。一致は prek の hook が検査する。
+- リポジトリ直下の `scripts/` は配布 (install) 用で、skill 本体からは参照しない。
 
 ## 変更時の手順
 

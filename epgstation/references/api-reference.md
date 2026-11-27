@@ -14,27 +14,13 @@ response schemas, with Japanese descriptions. Its paths omit the `/api`
 prefix. Look up one operation instead of reading the whole document:
 
 ```bash
-set -o pipefail  # a failed download must fail the command
 # List operations
 curl -sf "https://epgstation.msageha.net/api/docs" | jq -er '.paths | to_entries[]
   | .key as $p | .value | to_entries[] | select(.value | type == "object")
   | "\(.key | ascii_upcase) \($p)  \(.value.summary // .value.description // "")"'
 
-# One operation with its parameters and schemas inlined — set --arg path / --arg method
-curl -sf "https://epgstation.msageha.net/api/docs" | jq -e --arg path /schedules/search --arg method post '
-  . as $root
-  | def deref($seen):
-      if type == "object" then
-        if has("$ref") then (."$ref" | split("/")) as $r | ($r | last) as $n
-          | (if ($seen | index($n)) then {"$ref": $n} else ($root.components[$r[2]][$n] | deref($seen + [$n])) end)
-            + (del(."$ref") | deref($seen))
-        else map_values(deref($seen)) end
-      elif type == "array" then map(deref($seen)) else . end;
-    .paths[$path] as $item
-    | $item[$method]
-    | {summary, description, parameters: (($item.parameters // []) + (.parameters // [])),
-       request: .requestBody, responses: (.responses | map_values(.content // .description))}
-    | deref([])'
+# One operation with its $refs inlined (<skill-dir>: the directory of this skill's SKILL.md)
+curl -sf "https://epgstation.msageha.net/api/docs" | jq -e -f "<skill-dir>/scripts/openapi-operation.jq" --arg method post --arg path /schedules/search
 ```
 
 ## Behaviour the OpenAPI document doesn't show or gets wrong
@@ -62,6 +48,11 @@ curl -sf "https://epgstation.msageha.net/api/docs" | jq -e --arg path /schedules
   required, and each `times` entry needs `start` (seconds from 00:00) and
   `range` (seconds); otherwise `start` is an hour (0-23) and `range` hours
   (1-23).
+- `saveOption.parentDirectoryName` (and `encodeParentDirectoryName1..3`) is the
+  name of a recording directory defined in the server config, not a path;
+  `directory` (`directory1..3`) is a subdirectory under it, and
+  `recordedFormat` is a file name template with placeholders such as
+  `%YEAR%` `%MONTH%` `%DAY%` `%TITLE%`. Omit them to use the server defaults.
 - `RuleReserveOption.periodToAvoidDuplicate` is in days (the document only
   says "period").
 - `RuleSearchOption.isFree: true` limits to free broadcasts; `false` or
@@ -70,12 +61,8 @@ curl -sf "https://epgstation.msageha.net/api/docs" | jq -e --arg path /schedules
 - `/schedules/broadcasting` and search results include `rawExtended` (the
   extended text split by heading) whenever the program has it, without
   `needsRawExtended`.
-- `GET /rules`: each rule is the `AddRuleOption` body (as sent to
-  `POST /rules`) plus `id` and `reservesCnt` (reservations it currently
-  produces).
-- `POST /reserves` needs `allowEndLack` and either `programId` (from a
-  schedule or search result) or `timeSpecifiedOption`
-  (`{channelId, startAt, endAt, name}`).
+- `POST /reserves` needs either `programId` (from a schedule or search
+  result) or `timeSpecifiedOption`; the document marks neither as required.
 
 ## Genre IDs (ARIB STD-B10)
 

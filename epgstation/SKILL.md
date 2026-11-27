@@ -21,9 +21,9 @@ Base URL: `https://epgstation.msageha.net/api` (EPGStation v2.10.0).
 - Always pass `isHalfWidth=true` for readable Japanese text.
 - Default `limit` is 24; paginate with `limit`/`offset`.
 - Genre IDs follow ARIB STD-B10 (see references/api-reference.md for the table).
-- Confirm with the user before creating or deleting a reservation or rule,
-  disabling a rule (it stops future auto-recordings), and before deleting a
-  recorded program (irreversible).
+- Confirm with the user before creating or deleting a reservation, before
+  adding, editing, enabling, disabling or deleting a rule (rules create and
+  remove reservations), and before deleting a recorded program (irreversible).
 - Search for a program first and show results before reserving it.
 
 ## Core operations

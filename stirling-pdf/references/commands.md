@@ -1,9 +1,8 @@
 # Stirling PDF Command Recipes
 
-Ready-to-run `curl` examples for common tasks. Every endpoint's parameters and
-request/response schema are in the server's OpenAPI document, and behaviour it
-doesn't show is in [api-reference.md](api-reference.md), which also explains
-how to look up the schema. Base URL: `https://pdf-tools.msageha.net/api/v1`.
+Ready-to-run `curl` examples for common tasks. For other endpoints and for
+request/response schemas, see [api-reference.md](api-reference.md): how to look
+them up in the server's OpenAPI document, and what the document leaves out. Base URL: `https://pdf-tools.msageha.net/api/v1`.
 
 ## PDF to Markdown (for Obsidian)
 
@@ -75,7 +74,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/html/pdf" \
 # 303 redirect (Location: ...?error=error.urlNotReachable), which -f doesn't treat as an error
 tmp=$(mktemp ./output.pdf.XXXXXX) || exit 1   # same directory, so mv only renames
 code=$(curl -sS -X POST "https://pdf-tools.msageha.net/api/v1/convert/url/pdf" \
-  --form-string "urlInput=https://example.com" \
+  --form-string 'urlInput=https://example.com' \
   -o "$tmp" -w '%{http_code}') && [ "$code" = 200 ] && mv "$tmp" output.pdf \
   || { echo "conversion failed (HTTP $code)"; rm -f "$tmp"; exit 1; }
 
@@ -123,7 +122,8 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/rotate-pdf" \
   -F "angle=90" \
   -o rotated.pdf
 
-# New order for a 4-page PDF; pages not listed are dropped
+# New order for a 4-page PDF. Pages not listed are dropped: check the page count first,
+# and confirm with the user before leaving any out
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/rearrange-pages" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=3,1,2,4" \
@@ -207,7 +207,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-page-numbers" \
   -F "fontSize=12" \
   -F "fontType=helvetica" \
   -F "startingNumber=1" \
-  --form-string "customText={n}" \
+  --form-string 'customText={n}' \
   -o numbered.pdf
 ```
 
@@ -218,7 +218,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-stamp" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=all" \
   -F "stampType=text" \
-  --form-string "stampText=CONFIDENTIAL @date" \
+  --form-string 'stampText=CONFIDENTIAL @date' \
   -F "fontSize=30" \
   -F "rotation=45" \
   -F "opacity=0.3" \
@@ -233,28 +233,27 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-stamp" \
 ## Update Metadata
 
 `keepOmitted=true` keeps the fields you don't send; without it, every
-standard field you omit is removed from the document.
+standard field you omit is removed from the document info dictionary (XMP
+metadata keeps its values).
 
 ```bash
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/update-metadata" \
   -F "fileInput=@input.pdf" \
   -F "keepOmitted=true" \
-  --form-string "title=<title>" \
-  --form-string "author=<author>" \
-  --form-string "subject=<subject>" \
-  --form-string "keywords=<keyword1>,<keyword2>" \
+  --form-string 'title=<title>' \
+  --form-string 'author=<author>' \
+  --form-string 'subject=<subject>' \
+  --form-string 'keywords=<keyword1>,<keyword2>' \
   -o updated.pdf
 ```
 
 ## Add / Remove Password, Watermark
 
 ```bash
-# Adding or removing protection — confirm with the user first.
-# Keep passwords off the command line: curl reads a form value from a file with "<file"
-pwfile=$(mktemp); read -rs -p "PDF password: " PW; printf '%s' "$PW" > "$pwfile"; unset PW
+# Adding or removing protection — confirm with the user first
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/add-password" \
   -F "fileInput=@input.pdf" \
-  -F "password=<$pwfile" \
+  --form-string 'password=<password>' \
   -F "keyLength=256" \
   -o protected.pdf
 
@@ -263,14 +262,13 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/add-password" \
 # (sourcePassword); to remove everything, add -F "removeAll=true" with the permissions password
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/remove-password" \
   -F "fileInput=@input.pdf" \
-  -F "password=<$pwfile" \
+  --form-string 'password=<current-password>' \
   -o unlocked.pdf
-rm -f "$pwfile"
 
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/add-watermark" \
   -F "fileInput=@input.pdf" \
   -F "watermarkType=text" \
-  --form-string "watermarkText=DRAFT" \
+  --form-string 'watermarkText=DRAFT' \
   -F "fontSize=50" \
   -F "rotation=45" \
   -F "opacity=0.3" \

@@ -20,25 +20,12 @@ enums and response models, with field descriptions in Japanese. Look up one
 operation instead of reading the whole document:
 
 ```bash
-set -o pipefail  # a failed download must fail the command
-# List operations
+# List operations. Paths in the document start with /api, the Base URL's path
 curl -sf "https://daikin.msageha.net/openapi.json" | jq -er '.paths | to_entries[]
   | .key as $p | .value | to_entries[] | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
 
-# One operation with its schemas inlined — set --arg path / --arg method
-curl -sf "https://daikin.msageha.net/openapi.json" | jq -e --arg path /api/status --arg method get '
-  . as $root
-  | def deref($seen):
-      if type == "object" then
-        if has("$ref") then (."$ref" | split("/") | last) as $n
-          | (if ($seen | index($n)) then {"$ref": $n} else ($root.components.schemas[$n] | deref($seen + [$n])) end)
-            + (del(."$ref") | deref($seen))
-        else map_values(deref($seen)) end
-      elif type == "array" then map(deref($seen)) else . end;
-    .paths[$path][$method]
-    | {summary, description, parameters, request: .requestBody,
-       responses: (.responses | with_entries(.value |= if .content and (.description != "Validation Error") then .content else .description end))}
-    | deref([])'
+# One operation with its $refs inlined (<skill-dir>: the directory of this skill's SKILL.md)
+curl -sf "https://daikin.msageha.net/openapi.json" | jq -e -f "<skill-dir>/scripts/openapi-operation.jq" --arg method get --arg path /api/status
 ```
 
 Every `/status` and `/info` field is nullable: a value the unit didn't return
