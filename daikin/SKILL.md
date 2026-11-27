@@ -15,8 +15,9 @@ metadata:
 Base URL: `https://daikin.msageha.net/api` (FastAPI wrapper around the Daikin
 MCK706A-W local `dsiot` API). Requests to this instance don't need any
 authentication header/cookie; the server talks to the unit directly. The
-reverse proxy only admits allowlisted LAN client IPs — a `403` with an nginx
-HTML page means the caller isn't on that list, not an API error.
+reverse proxy only admits allowlisted LAN client IPs, and rejects requests
+whose `Origin` header names another site — a `403` with an nginx HTML page
+means one of these, not an API error.
 
 ## Key facts
 
@@ -41,13 +42,25 @@ HTML page means the caller isn't on that list, not an API error.
   read `GET /status` first.
 - `POST /write` is a raw dsiot property write (`confirm: true` required,
   otherwise 422) and can change arbitrary unit settings — confirm with the
-  user and prefer the purpose-built endpoints. An out-of-range value written
-  this way makes `GET /status` return 502 until the property is restored.
-  `POST /read` and `GET /tree` are read-only and safe.
+  user and prefer the purpose-built endpoints. The unit stores out-of-range
+  values as-is; one `/status` can't decode makes it return 502 until the
+  property is restored. Before writing, read the property (`GET /tree` for
+  `dgc_status`, `POST /read` for other containers), note its `pv`, keep the
+  new value within the bounds (`min`..`max` in `/tree`, `md.mi`..`md.mx` in
+  `/read`; for enum-like ones a value whose bit is set in that upper bound, a bitmask),
+  read back after, and restore the original when probing.
+  `POST /read` and `GET /tree` are read-only and safe; `POST /read` returns
+  per-address dsiot errors inside a 200, so check each `rsc`.
+- After `POST /course` while purifying only, wait until the humidify side
+  has synced (a few seconds; check `e_1002/e_3007/p_03` in `GET /tree`, since
+  `/status.course` shows the purify side then) before
+  `POST /humidity-setting`; otherwise it writes to the previous course or
+  returns 409.
 - Errors: `409` unsupported value / not selectable in the current state,
   `422` request validation (including a missing `confirm`), `502` unit
   returned an error or an undecodable value (`detail` + dsiot `rsc`; `200x`
-  is success), `504` unit unreachable on the LAN.
+  is success; a write may already have taken effect — re-read state before
+  retrying), `504` unit unreachable on the LAN.
 
 ## Core operations
 

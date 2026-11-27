@@ -3,6 +3,12 @@
 Ready-to-run `curl` examples for the endpoints listed in
 [api-reference.md](api-reference.md). Base URL: `https://epgstation.msageha.net/api`.
 
+The examples pipe to `jq` for brevity, which hides failures: an error body run
+through a field filter just shows `null`s, and the pipe exits 0. Before
+trusting a filtered result, check the request: run with `set -o pipefail` and
+`curl -sf`, or save the body with `-o <file>` and read the status from
+`-w '%{http_code}'`.
+
 ## Currently Broadcasting
 
 ```bash

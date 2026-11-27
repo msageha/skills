@@ -17,8 +17,9 @@ popIn Aladdin's local UPnP/DLNA MediaRenderer plus the proprietary control
 protocols the official app uses — popIn's own TCP protocol and the XGIMI GMSDK
 UDP protocol). Requests to this instance don't need any authentication
 header/cookie; the server talks to the unit directly. The reverse proxy only
-admits allowlisted LAN client IPs — a `403` with an nginx HTML page means the
-caller isn't on that list, not an API error.
+admits allowlisted LAN client IPs, and rejects requests whose `Origin` header
+names another site — a `403` with an nginx HTML page means one of these, not
+an API error.
 
 ## Key facts
 
@@ -39,22 +40,36 @@ caller isn't on that list, not an API error.
 - `POST /power/off` (`{"confirm": true}` required) really powers the
   projector down, and this API cannot turn it back on — always confirm with
   the user first.
+- DLNA endpoints (`/status`, `/volume`, `/mute`, playback, `/cast`, `/soap`)
+  need the projector running: with only the ceiling light on, or the
+  projector off, they fail with `504` "cannot reach". The light's on/off
+  state can't be read in any state. A `504` from them doesn't
+  by itself prove the projector is off (any network failure gives it).
+- `GET /discover` returns `[]` on this instance (the server runs on a Docker
+  bridge network, so its LAN broadcast reaches no device); the unit's address
+  is fixed in the server config, so it isn't needed.
 - `GET /remote/device` reports the foreground app; `GET /status` only knows
   the DLNA playback state.
 - `POST /cast` needs a media URL reachable from the device's LAN. It replaces
-  whatever is currently showing — confirm if something is playing.
+  the current DLNA media — confirm if something is being watched or you
+  can't tell. It sets the URI before sending Play, so after a failure check
+  `GET /media` (URI) and `GET /transport` (playing or not) before resending.
+  `/stop`, `/next`, `/previous` act on DLNA playback only (`/status`
+  `STOPPED` says nothing about an app like YouTube).
 - UDP-based commands (`/key`, `/memory/free`, `/power/off`) only report that
   the datagram was sent: they return 200 even when the unit is off. When it
-  matters, verify with `/remote/ping`, `/remote/device` or `/capture`.
+  matters, look for the effect with `/remote/device` (foreground app) or
+  `/capture` (screenshot URL) where it is observable there; `/remote/ping`
+  only shows the TCP control port is reachable.
 - Verified on the real unit: light, D-pad, `back` `menu` `vol_up` `vol_down`
   `power`, text input, voice, ping. The other keys, `/remote/*` info
   endpoints, `/discover`, `/deeplink`, `/memory/free`, `/capture` and
   `/power/off` were reconstructed from the official app and are unverified.
 - Writes are immediately visible in the room (light/volume/playback). Safe to
-  do when asked; confirm first for `/power/off`, stopping active playback,
-  casting over running content, and `/soap` Set-actions (`confirm: true`
-  required).
-- Errors: `400` missing `confirm` (`/soap` Set-actions, `/power/off`), `422`
+  do when asked; confirm first for `/power/off`, stopping or skipping active playback,
+  casting over running content (or when you can't tell), and `/soap` actions outside its read-only
+  list (`confirm: true` required).
+- Errors: `400` missing or false `confirm` (`/soap` non-read-only actions, `/power/off`), `422`
   body validation (unknown button, volume out of range, …), `502` device
   returned a SOAP fault or an unexpected answer (`detail`; SOAP faults add
   `fault_code` + `upnp_error_code`), `504` unit unreachable or no UDP reply in
@@ -79,7 +94,6 @@ caller isn't on that list, not an API error.
 | Power off (destructive, `confirm: true`)                           | `POST /power/off`                                                            |
 | Device info / playback details                                     | `GET /info`, `/transport`, `/position`, `/media`, `/protocol-info`           |
 | Model / OS / storage / features, photo memory, is an app installed | `GET /remote/version`, `/remote/album`, `/remote/apps/{package}`             |
-| Find Aladdins on the LAN                                           | `GET /discover?wait=3`                                                       |
 | Free memory / remote ping                                          | `POST /memory/free`, `POST /remote/ping`                                     |
 | Raw SOAP action (escape hatch)                                     | `POST /soap`                                                                 |
 | Server health / button list                                        | `GET /health`, `GET /remote/buttons`                                         |

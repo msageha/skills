@@ -54,7 +54,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/word" \
 
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/pdf/html" \
   -F "fileInput=@input.pdf" \
-  -o output.html
+  -o output.zip   # ZIP with the HTML and its assets
 ```
 
 ## Markdown / HTML / URL / Office to PDF
@@ -69,9 +69,13 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/html/pdf" \
   -F "zoom=1" \
   -o output.pdf
 
-curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/url/pdf" \
-  -F "urlInput=https://example.com" \
-  -o output.pdf
+# Internet URLs only: private network, loopback and .local hosts are rejected with a
+# 303 redirect (Location: ...?error=error.urlNotReachable), which -f doesn't treat as an error
+tmp=$(mktemp ./output.pdf.XXXXXX) || exit 1   # same directory, so mv only renames
+code=$(curl -sS -X POST "https://pdf-tools.msageha.net/api/v1/convert/url/pdf" \
+  --form-string "urlInput=https://example.com" \
+  -o "$tmp" -w '%{http_code}') && [ "$code" = 200 ] && mv "$tmp" output.pdf \
+  || { echo "conversion failed (HTTP $code)"; rm -f "$tmp"; exit 1; }
 
 # Supports .doc, .docx, .xls, .xlsx, .ppt, .pptx, .odt, .ods, .odp, .csv, etc.
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/file/pdf" \
@@ -104,7 +108,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/merge-pdfs" \
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/split-pages" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=1,3,5-9" \
-  -o split.zip
+  -o split.zip   # split points: cut after pages 1, 3, 5, 6, 7, 8, 9
 
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/remove-pages" \
   -F "fileInput=@input.pdf" \
@@ -116,6 +120,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/rotate-pdf" \
   -F "angle=90" \
   -o rotated.pdf
 
+# New order for a 4-page PDF; pages not listed are dropped
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/rearrange-pages" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=3,1,2,4" \
@@ -128,18 +133,25 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/general/rearrange-pages"
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/compress-pdf" \
   -F "fileInput=@input.pdf" \
   -F "optimizeLevel=5" \
-  -F "expectedOutputSize=25KB" \
   -o compressed.pdf
 ```
 
 ## OCR
 
-Note: available `languages` values depend on which Tesseract `.traineddata`
-files are bundled in the deployed image (full/lite/ultra-lite variant) — check
-`languages` availability rather than assuming a fixed list.
+Which `languages` work depends on the `.traineddata` files installed on the
+server, and codes that aren't installed are dropped silently. Check that every
+language to send is installed; if one the user needs is missing, say so
+instead of running OCR without it.
 
 ```bash
-# Japanese + English OCR
+# Installed languages
+curl -sSf "https://pdf-tools.msageha.net/api/v1/ui-data/ocr-pdf" | jq -c .languages
+
+# Japanese + English OCR, only if both are installed
+set -o pipefail
+curl -sSf "https://pdf-tools.msageha.net/api/v1/ui-data/ocr-pdf" \
+  | jq -e '.languages | index("jpn") and index("eng")' >/dev/null \
+  || { echo "jpn or eng not installed (or the list couldn't be read)"; exit 1; }
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/ocr-pdf" \
   -F "fileInput=@scanned.pdf" \
   -F "languages=jpn" \
@@ -148,7 +160,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/ocr-pdf" \
   -F "ocrRenderType=hocr" \
   -o ocr_output.pdf
 
-# Force OCR on all pages
+# Force OCR on all pages. With a single language, a missing one fails with 400 instead of being dropped
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/ocr-pdf" \
   -F "fileInput=@scanned.pdf" \
   -F "languages=jpn" \
@@ -187,12 +199,12 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/extract-images" \
 ```bash
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-page-numbers" \
   -F "fileInput=@input.pdf" \
-  -F "pageNumbers=all" \
+  -F "pagesToNumber=all" \
   -F "position=8" \
   -F "fontSize=12" \
   -F "fontType=helvetica" \
   -F "startingNumber=1" \
-  -F "customText={n}" \
+  --form-string "customText={n}" \
   -o numbered.pdf
 ```
 
@@ -203,7 +215,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-stamp" \
   -F "fileInput=@input.pdf" \
   -F "pageNumbers=all" \
   -F "stampType=text" \
-  -F "stampText=CONFIDENTIAL" \
+  --form-string "stampText=CONFIDENTIAL @date" \
   -F "fontSize=30" \
   -F "rotation=45" \
   -F "opacity=0.3" \
@@ -217,18 +229,17 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-stamp" \
 
 ## Update Metadata
 
-Standard fields you omit are removed from the document — resend every value
-you want to keep. `POST /analysis/document-properties` gives the current text
-fields; convert its dates to `yyyy/MM/dd HH:mm:ss` before resending, and pass
-`trapped` yourself (analysis doesn't return it).
+`keepOmitted=true` keeps the fields you don't send; without it, every
+standard field you omit is removed from the document.
 
 ```bash
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/update-metadata" \
   -F "fileInput=@input.pdf" \
-  -F "title=My Document" \
-  -F "author=Author Name" \
-  -F "subject=Subject" \
-  -F "keywords=keyword1,keyword2" \
+  -F "keepOmitted=true" \
+  --form-string "title=My Document" \
+  --form-string "author=Author Name" \
+  --form-string "subject=Subject" \
+  --form-string "keywords=keyword1,keyword2" \
   -o updated.pdf
 ```
 
@@ -237,19 +248,22 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/update-metadata" \
 ```bash
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/add-password" \
   -F "fileInput=@input.pdf" \
-  -F "password=mypassword" \
+  --form-string "password=<password>" \
   -F "keyLength=256" \
   -o protected.pdf
 
+# Removes the opening password; if the PDF also had restrictions, they stay under a new
+# random permissions password. To keep the original one, use selective removal
+# (sourcePassword); to remove everything, add -F "removeAll=true" with the permissions password
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/remove-password" \
   -F "fileInput=@input.pdf" \
-  -F "password=currentpassword" \
+  --form-string "password=<current-password>" \
   -o unlocked.pdf
 
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/add-watermark" \
   -F "fileInput=@input.pdf" \
   -F "watermarkType=text" \
-  -F "watermarkText=DRAFT" \
+  --form-string "watermarkText=DRAFT" \
   -F "fontSize=50" \
   -F "rotation=45" \
   -F "opacity=0.3" \

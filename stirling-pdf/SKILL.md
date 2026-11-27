@@ -12,7 +12,7 @@ metadata:
 
 # Stirling PDF
 
-Base URL: `https://pdf-tools.msageha.net/api/v1` (Stirling PDF v3.0.0).
+Base URL: `https://pdf-tools.msageha.net/api/v1` (Stirling PDF v3.5.0).
 File-processing endpoints accept `multipart/form-data` and return the processed
 file directly; `/analysis/*` and `/info/status` return JSON.
 
@@ -24,8 +24,16 @@ file directly; `/analysis/*` and `/info/status` return JSON.
 - Response is the processed file (binary); save with `-o output.ext` and call
   `curl -sSf` so an HTTP error leaves no output file (curl exits 22 and reports
   the status on stderr; rerun without `-f`/`-o` to read the error JSON).
+  Exception: `/convert/url/pdf` rejects a URL with a `303` redirect, which
+  `-f` passes — check that the status is `200` there.
+- Send user-supplied text (passwords, `stampText`, metadata) with
+  `--form-string`: `-F` reads a value starting with `@` or `<` as a local file
+  and splits off `;type=…`.
+- OCR `languages` not installed on the server are dropped silently; list the
+  installed ones with `GET /ui-data/ocr-pdf` before OCR.
 - `pageNumbers` supports ranges: `1,3,5-9`, `all`, or expressions like `2n+1`.
-- Large files may take time; inform the user before starting.
+- Uploads are limited to 2000 MB per request. Large files may take time;
+  inform the user before starting.
 - Confirm before destructive operations (removing pages, adding passwords).
 
 ## Core operations
