@@ -69,9 +69,13 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/html/pdf" \
   -F "zoom=1" \
   -o output.pdf
 
-curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/url/pdf" \
-  -F "urlInput=https://example.com" \
-  -o output.pdf
+# Internet URLs only: private network, loopback and .local hosts are rejected with a
+# 303 redirect (Location: ...?error=error.urlNotReachable), which -f doesn't treat as an error
+tmp=$(mktemp ./output.pdf.XXXXXX) || exit 1   # same directory, so mv only renames
+code=$(curl -sS -X POST "https://pdf-tools.msageha.net/api/v1/convert/url/pdf" \
+  --form-string "urlInput=https://example.com" \
+  -o "$tmp" -w '%{http_code}') && [ "$code" = 200 ] && mv "$tmp" output.pdf \
+  || { echo "conversion failed (HTTP $code)"; rm -f "$tmp"; exit 1; }
 
 # Supports .doc, .docx, .xls, .xlsx, .ppt, .pptx, .odt, .ods, .odp, .csv, etc.
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/convert/file/pdf" \
@@ -134,13 +138,20 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/compress-pdf" \
 
 ## OCR
 
-Note: available `languages` values depend on which Tesseract `.traineddata`
-files are bundled in the deployed image (full/lite/ultra-lite variant) — check
-`languages` availability rather than assuming a fixed list.
+Which `languages` work depends on the `.traineddata` files installed on the
+server, and codes that aren't installed are dropped silently. Check that every
+language to send is installed; if one the user needs is missing, say so
+instead of running OCR without it.
 
 ```bash
-# Japanese + English OCR. Codes not installed on the server are dropped silently;
-# check one first by sending it alone (400 "none of the selected languages are valid" = not installed)
+# Installed languages
+curl -sSf "https://pdf-tools.msageha.net/api/v1/ui-data/ocr-pdf" | jq -c .languages
+
+# Japanese + English OCR, only if both are installed
+set -o pipefail
+curl -sSf "https://pdf-tools.msageha.net/api/v1/ui-data/ocr-pdf" \
+  | jq -e '.languages | index("jpn") and index("eng")' >/dev/null \
+  || { echo "jpn or eng not installed (or the list couldn't be read)"; exit 1; }
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/ocr-pdf" \
   -F "fileInput=@scanned.pdf" \
   -F "languages=jpn" \
@@ -149,7 +160,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/ocr-pdf" \
   -F "ocrRenderType=hocr" \
   -o ocr_output.pdf
 
-# Force OCR on all pages
+# Force OCR on all pages. With a single language, a missing one fails with 400 instead of being dropped
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/ocr-pdf" \
   -F "fileInput=@scanned.pdf" \
   -F "languages=jpn" \
@@ -193,7 +204,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/add-page-numbers" \
   -F "fontSize=12" \
   -F "fontType=helvetica" \
   -F "startingNumber=1" \
-  -F "customText={n}" \
+  --form-string "customText={n}" \
   -o numbered.pdf
 ```
 
@@ -225,10 +236,10 @@ standard field you omit is removed from the document.
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/misc/update-metadata" \
   -F "fileInput=@input.pdf" \
   -F "keepOmitted=true" \
-  -F "title=My Document" \
-  -F "author=Author Name" \
-  -F "subject=Subject" \
-  -F "keywords=keyword1,keyword2" \
+  --form-string "title=My Document" \
+  --form-string "author=Author Name" \
+  --form-string "subject=Subject" \
+  --form-string "keywords=keyword1,keyword2" \
   -o updated.pdf
 ```
 
@@ -252,7 +263,7 @@ curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/remove-password
 curl -sSf -X POST "https://pdf-tools.msageha.net/api/v1/security/add-watermark" \
   -F "fileInput=@input.pdf" \
   -F "watermarkType=text" \
-  -F "watermarkText=DRAFT" \
+  --form-string "watermarkText=DRAFT" \
   -F "fontSize=50" \
   -F "rotation=45" \
   -F "opacity=0.3" \

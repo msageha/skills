@@ -93,11 +93,11 @@ in plain text — the server base64-encodes them. Only `updated` has the
 password masked, so print that rather than the whole response.
 
 ```bash
-# Change guest Wi-Fi SSID and password. Export the user's values as SSID /
-# WIFI_PASSWORD (e.g. read -rs WIFI_PASSWORD; export WIFI_PASSWORD) rather than
-# writing them into the command; jq reads them from the environment (not argv)
-# and builds valid JSON whatever characters they contain.
-[ -n "$SSID" ] && [ -n "$WIFI_PASSWORD" ] || { echo "set both SSID and WIFI_PASSWORD"; exit 1; }
+# Change guest Wi-Fi SSID and password. jq builds the JSON from the environment,
+# so it stays valid whatever characters the values contain (single-quote them
+# for the shell; write a ' inside as '\'').
+export SSID='<ssid>' WIFI_PASSWORD='<password>'
+[ -n "$SSID" ] && [ -n "$WIFI_PASSWORD" ] || { echo "SSID or password is empty"; exit 1; }
 jq -n '{band: "band5_1", network: "guest", settings: {ssid: env.SSID, password: env.WIFI_PASSWORD}}' \
   | curl -s -X POST "https://deco-api.msageha.net/api/wireless/config" \
       -H "Content-Type: application/json" --data @- | jq .updated
@@ -166,12 +166,13 @@ curl -s "https://deco-api.msageha.net/api/system/switch-list" | jq .
 ## Speed Test
 
 ```bash
+set -o pipefail
 base=https://deco-api.msageha.net/api
 before=$(curl -sf -m 10 "$base/device/speedtest" | jq -e '.last_speed_test_time | numbers // "none"') \
   || { echo "cannot read the last result"; exit 1; }
-# A 4xx/5xx means it didn't start; on a timeout it may have, so keep polling
+# A 4xx means it didn't start; after a 5xx or timeout it may have, so keep polling
 curl -s -m 30 -o /dev/null -w '%{http_code}' -X POST "$base/luci/device/speedtest/write" \
-  -H "Content-Type: application/json" -d '{}' | grep -q '^[45]' && { echo "start failed"; exit 1; }
+  -H "Content-Type: application/json" -d '{}' | grep -q '^4' && { echo "start rejected"; exit 1; }
 # About 1 min; give up after 5 min or on status "fail"
 deadline=$((SECONDS + 300))
 while sleep 5; [ "$SECONDS" -lt "$deadline" ]; do
@@ -199,13 +200,14 @@ curl -s -X POST "https://deco-api.msageha.net/api/app/device/led/write" \
 ## Firmware Upgrade (destructive — network down for minutes; confirm first)
 
 Run each step separately and go on only when the previous one succeeded.
-Run `set -o pipefail` first: `curl -f` exits non-zero on an HTTP error, and
-without pipefail the `| jq` after it hides that.
 
-1. Check (in the same router session; stop unless some node has `need_to_upgrade: true`; a `null` there means unknown):
+1. Check — don't skip it: the router reports download progress only after a
+   check in the same router session. Stop unless some node has
+   `need_to_upgrade: true` (`null` means unknown):
 
 ```bash
-curl -sf "https://deco-api.msageha.net/api/system/firmware" | jq '.[] | {device_model, software_ver, new_version, need_to_upgrade}'
+set -o pipefail
+curl -sf "https://deco-api.msageha.net/api/system/firmware" | jq '.[] | {mac, device_model, software_ver, new_version, need_to_upgrade}'
 ```
 
 2. Download (stop on a non-zero exit):
@@ -216,18 +218,17 @@ curl -sf -X POST "https://deco-api.msageha.net/api/luci/cloud/firmware/download"
 ```
 
 3. Poll until the download completes. Check `status` before
-   `download_progress`: 5 consecutive `fail` / `preparing` means it failed
-   (their progress doesn't count). If step 2 lost its response, this also
+   `download_progress`: 5 consecutive polls with `status` `fail`, `preparing`
+   or missing mean it failed (their progress doesn't count). If step 2 lost its response, this also
    tells whether the download started:
 
 ```bash
-set -o pipefail
 deadline=$((SECONDS + 600)); misses=0
 while sleep 3; [ "$SECONDS" -lt "$deadline" ]; do
   r=$(curl -sf -m 30 -X POST "https://deco-api.msageha.net/api/luci/cloud/firmware_status/read" \
     -H "Content-Type: application/json" -d '{}') || { echo "read failed"; exit 1; }
   case "$(jq -r '.status' <<<"$r")" in
-    fail | preparing) misses=$((misses + 1)); [ "$misses" -ge 5 ] && { echo "download failed"; exit 1; }; continue ;;
+    fail | preparing | null | "") misses=$((misses + 1)); [ "$misses" -ge 5 ] && { echo "download failed"; exit 1; }; continue ;;
   esac
   misses=0
   jq -c '{status, download_progress}' <<<"$r"
@@ -239,7 +240,7 @@ echo "not downloaded within 10 min"; exit 1
 4. Upgrade (`upgrade_time` + `reboot_time` = expected downtime in seconds). A
    4xx means it didn't start. On a 5xx, timeout, dropped connection or
    unparsable response, the upgrade may have started — don't resend; wait
-   several minutes and re-check every node's `software_ver` with step 1:
+   several minutes and re-check each node's `software_ver` (by `mac`) with step 1:
 
 ```bash
 curl -s -w '\nHTTP %{http_code}\n' -X POST "https://deco-api.msageha.net/api/luci/cloud/firmware_status/upgrade" \
@@ -282,8 +283,8 @@ curl -s -X POST "https://deco-api.msageha.net/api/reboot" \
   -d '{"confirm": true}' | jq .
 
 # Specific units (MACs from GET /devices) — drops their clients and the mesh links
-# behind them. An empty or null "macs" reboots every
-# units, so stop if the lookup found nothing
+# behind them. An empty or null "macs" reboots every unit, so stop if the lookup
+# found nothing
 curl -s -X POST "https://deco-api.msageha.net/api/reboot" \
   -H "Content-Type: application/json" \
   -d '{"confirm": true, "macs": ["AA-BB-CC-DD-EE-FF"]}' | jq .

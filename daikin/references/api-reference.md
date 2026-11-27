@@ -297,17 +297,18 @@ they cover the need.**
 | confirm     | `true`   | yes      | Must be literally `true`; missing or `false` is rejected with 422                                       |
 
 Unknown body fields are rejected (`extra=forbid`); `confirm` must be the JSON
-`true` (`1` or `"true"` → 422). When probing a property, note its current
-value first, write only values within `md.mi`..`md.mx` (for enum-like ones, a
-value whose bit is set in the `md.mx` bitmask), read back, then restore the
-original. The unit itself accepts
-values outside its supported set, so check `GET /tree` first: for enum-like
-properties `max` is the bitmask of supported values. Writing an unsupported
-value that `/status` can't decode (e.g. `01` to the changeover property, or
-a course index ≥ 11) leaves `GET /status` returning 502 until you restore a
-supported value — with the setter that writes that property where one does
-(`/humidify` for the changeover; `/course` / `/fan-speed` for the current
-side), otherwise with another `/write` (e.g. the side not currently active). Properties
-outside `dgc_status` aren't in `GET /tree`; read them with `POST /read`.
+`true` (`1` or `"true"` → 422).
+
+The unit stores values outside its supported set as-is. Before writing, read
+the property — `GET /tree` for `dgc_status` (bounds in `min` / `max`),
+`POST /read` for other containers (`md.mi` / `md.mx`) — note its current
+value, and write only a value within the bounds (for enum-like properties,
+the upper bound is a bitmask: only values whose bit is set are supported). Read back
+afterwards, and restore the original when probing. A value `/status` can't
+decode (e.g. `01` to the changeover property, or a course index ≥ 11) leaves
+`GET /status` returning 502 until a supported value is restored — with the
+setter that writes that property where one does (`/humidify` for the
+changeover; `/course` / `/fan-speed` for the current side), otherwise with
+another `/write` (e.g. the side not currently active).
 
 Response: `{ "written": { "to": ..., "entity_path": [...], "pv": ... }, "result": <dsiot response> }`

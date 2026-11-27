@@ -46,8 +46,9 @@ means one of these, not an API error.
   values as-is; one `/status` can't decode makes it return 502 until the
   property is restored. Before writing, read the property (`GET /tree` for
   `dgc_status`, `POST /read` for other containers), note its `pv`, keep the
-  new value within `md.mi`..`md.mx` (or a set bit of the `md.mx` bitmask for
-  enum-like ones), read back after, and restore the original when probing.
+  new value within the bounds (`min`..`max` in `/tree`, `md.mi`..`md.mx` in
+  `/read`; for enum-like ones a value whose bit is set in that upper bound, a bitmask),
+  read back after, and restore the original when probing.
   `POST /read` and `GET /tree` are read-only and safe; `POST /read` returns
   per-address dsiot errors inside a 200, so check each `rsc`.
 - After `POST /course` while purifying only, wait until the humidify side

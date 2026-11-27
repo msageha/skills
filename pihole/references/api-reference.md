@@ -4,7 +4,9 @@ Base URL: `https://pihole.msageha.net/api`
 Pi-hole REST API v6 (docker image `pihole/pihole:2026.11.0`: core v6.6 /
 web v6.6.1 / FTL v6.9). Requests to this instance don't need any
 authentication header/cookie; the reverse proxy admits only allowlisted LAN
-client IPs (`403` with an nginx HTML page otherwise).
+client IPs (`403` with an nginx HTML page otherwise). Requests Pi-hole judges
+cross-site (from `Sec-Fetch-Site` or `Origin`) get `401` `unauthorized` from
+Pi-hole itself.
 
 Every response body includes a `took` field (request processing time in
 seconds, float) not shown in the examples below.
@@ -400,7 +402,7 @@ Update or remove an adlist. The `type` query parameter is required on `PUT` and 
 | Endpoint                     | Description                                                                                                                                                                                                                                                                                                                                                                      |
 | ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `POST /action/gravity`       | Re-download all adlists. Response streamed as `text/plain`, always `200` once streaming starts: a failure shows as `Gravity failed` at the end of the body. `409` = another gravity run is in progress. Afterwards check each list's `status`; `gravity.last_update` in `/stats/summary` is the update time, not proof that DNS uses the new data (check the query log for that) |
-| `POST /action/restartdns`    | Restart the pihole-FTL DNS service.                                                                                                                                                                                                                                                                                                                                              |
+| `POST /action/restartdns`    | Restart the pihole-FTL DNS service: resolution stops briefly and a pending blocking timer is lost, so its scheduled switch never happens                                                                                                                                                                                                                                         |
 | `POST /action/flush/logs`    | Flush DNS logs and purge last 24h from the DB.                                                                                                                                                                                                                                                                                                                                   |
 | `POST /action/flush/network` | Flush the network table (remove all known devices). Replaces the deprecated `flush/arp`.                                                                                                                                                                                                                                                                                         |
 

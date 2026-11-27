@@ -67,7 +67,7 @@ an API error.
   `/power/off` were reconstructed from the official app and are unverified.
 - Writes are immediately visible in the room (light/volume/playback). Safe to
   do when asked; confirm first for `/power/off`, stopping or skipping active playback,
-  casting over running content, and `/soap` actions outside its read-only
+  casting over running content (or when you can't tell), and `/soap` actions outside its read-only
   list (`confirm: true` required).
 - Errors: `400` missing or false `confirm` (`/soap` non-read-only actions, `/power/off`), `422`
   body validation (unknown button, volume out of range, …), `502` device

@@ -71,30 +71,30 @@ means one of these, not an API error.
 
 ## Core operations
 
-| Task                                                                                    | Endpoint                                                                     |
-| --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
-| Overview (WAN/CPU/mem/node & client counts)                                             | `GET /dashboard`                                                             |
-| Deco units (mesh nodes)                                                                 | `GET /devices`                                                               |
-| Connected clients                                                                       | `GET /clients?online_only=true`                                              |
-| Blocked clients                                                                         | `GET /clients/blocked`                                                       |
-| Wi-Fi settings (all bands, host/guest)                                                  | `GET /wireless`                                                              |
-| Wi-Fi ON/OFF per band, or the non-separate guest bands at once                          | `POST /wireless`                                                             |
-| Change SSID/password/channel/encryption/guest limits                                    | `POST /wireless/config`                                                      |
-| Radio details (DFS / beamforming / operation mode / bridge / 802.11r roaming / 160 MHz) | `GET /wireless/{power,beamforming,operation-mode,bridge,roaming,bandwidth}`  |
-| WAN / internet / LAN / IPv6 status                                                      | `GET /network/wan`, `/network/internet`, `/network/lan`, `/network/ipv6`     |
-| WAN details (port mode / DHCP dial / IGMP / fast xmit / VLAN / DDNS / MAC clone)        | `GET /network/{wan-mode,dhcp-dial,igmp,fast-xmit,vlan,ddns,mac-clone}`       |
-| CPU / memory usage                                                                      | `GET /network/performance`                                                   |
-| Router mode / time settings / last speed test                                           | `GET /device/mode`, `/device/time`, `/device/speedtest`                      |
-| Run a speed test                                                                        | `POST /api/luci/device/speedtest/write`, then poll `GET /device/speedtest`   |
-| TP-Link cloud binding / ID login state                                                  | `GET /cloud/device-info`, `/cloud/login-status`                              |
-| System log / firmware update check                                                      | `GET /system/log`, `GET /system/firmware`                                    |
-| Firmware upgrade (destructive)                                                          | `/api/luci/cloud/firmware/download` → `firmware_status/{read,upgrade}`       |
-| Deco LEDs                                                                               | `POST /api/app/device/led/{read,write}`                                      |
-| DHCP reservations / port forwarding / block a client                                    | `/api/luci/client/addr_reservation/*`, `/api/app/nat/vs/*`, `…/black_list/*` |
-| Component info / UI feature switches / log types                                        | `GET /system/component-info`, `/system/switch-list`, `/system/log-types`     |
-| Reboot Deco units (destructive)                                                         | `POST /reboot`                                                               |
-| Any other router operation                                                              | `POST /api/luci/...`, `POST /api/app/...`, `POST /raw`                       |
-| Server health / explicit login                                                          | `GET /health`, `POST /login`, `POST /logout`                                 |
+| Task                                                                                    | Endpoint                                                                                    |
+| --------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Overview (WAN/CPU/mem/node & client counts)                                             | `GET /dashboard`                                                                            |
+| Deco units (mesh nodes)                                                                 | `GET /devices`                                                                              |
+| Connected clients                                                                       | `GET /clients?online_only=true`                                                             |
+| Blocked clients                                                                         | `GET /clients/blocked`                                                                      |
+| Wi-Fi settings (all bands, host/guest)                                                  | `GET /wireless`                                                                             |
+| Wi-Fi ON/OFF per band, or the non-separate guest bands at once                          | `POST /wireless`                                                                            |
+| Change SSID/password/channel/encryption/guest limits                                    | `POST /wireless/config`                                                                     |
+| Radio details (DFS / beamforming / operation mode / bridge / 802.11r roaming / 160 MHz) | `GET /wireless/{power,beamforming,operation-mode,bridge,roaming,bandwidth}`                 |
+| WAN / internet / LAN / IPv6 status                                                      | `GET /network/wan`, `/network/internet`, `/network/lan`, `/network/ipv6`                    |
+| WAN details (port mode / DHCP dial / IGMP / fast xmit / VLAN / DDNS / MAC clone)        | `GET /network/{wan-mode,dhcp-dial,igmp,fast-xmit,vlan,ddns,mac-clone}`                      |
+| CPU / memory usage                                                                      | `GET /network/performance`                                                                  |
+| Router mode / time settings / last speed test                                           | `GET /device/mode`, `/device/time`, `/device/speedtest`                                     |
+| Run a speed test                                                                        | `POST /api/luci/device/speedtest/write`, then poll `GET /device/speedtest`                  |
+| TP-Link cloud binding / ID login state                                                  | `GET /cloud/device-info`, `/cloud/login-status`                                             |
+| System log / firmware update check                                                      | `GET /system/log`, `GET /system/firmware`                                                   |
+| Firmware upgrade (destructive)                                                          | `/api/luci/cloud/firmware/download` → `firmware_status/{read,upgrade}`                      |
+| Deco LEDs                                                                               | `POST /api/app/device/led/{read,write}`                                                     |
+| DHCP reservations / port forwarding / block a client                                    | `/api/luci/client/addr_reservation/*`, `/api/app/nat/vs/*`, `/api/luci/client/black_list/*` |
+| Component info / UI feature switches / log types                                        | `GET /system/component-info`, `/system/switch-list`, `/system/log-types`                    |
+| Reboot Deco units (destructive)                                                         | `POST /reboot`                                                                              |
+| Any other router operation                                                              | `POST /api/luci/...`, `POST /api/app/...`, `POST /raw`                                      |
+| Server health / explicit login                                                          | `GET /health`, `POST /login`, `POST /logout`                                                |
 
 Full request/response schemas and ready-to-run curl examples: see
 [references/api-reference.md](references/api-reference.md) and

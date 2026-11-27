@@ -71,15 +71,15 @@ Convert PDF pages to images.
 
 ### Other conversions
 
-| Endpoint                     | Key fields                                                                                                                                                     |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `POST /convert/pdf/word`     | `fileInput`, `outputFormat` (`docx` / `odt`, required; `doc` → 400 since 3.5)                                                                                  |
-| `POST /convert/pdf/html`     | `fileInput` → ZIP (HTML and assets)                                                                                                                            |
-| `POST /convert/markdown/pdf` | `fileInput`                                                                                                                                                    |
-| `POST /convert/html/pdf`     | `fileInput`, `zoom` (default `1`)                                                                                                                              |
-| `POST /convert/url/pdf`      | `urlInput`                                                                                                                                                     |
-| `POST /convert/img/pdf`      | `fileInput` (multiple), `fitOption` (`fillPage`/`fitDocumentToImage`/`fitDocumentToPage`/`maintainAspectRatio`, default `fillPage`), `colorType`, `autoRotate` |
-| `POST /convert/file/pdf`     | `fileInput` — Word, Excel, PowerPoint, OpenDocument, RTF, CSV and text files → PDF (Stirling Office Convert). For web pages use `/convert/html/pdf`            |
+| Endpoint                     | Key fields                                                                                                                                                        |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `POST /convert/pdf/word`     | `fileInput`, `outputFormat` (`docx` / `odt`, required; `doc` → 400 since 3.5)                                                                                     |
+| `POST /convert/pdf/html`     | `fileInput` → ZIP (HTML and assets)                                                                                                                               |
+| `POST /convert/markdown/pdf` | `fileInput`                                                                                                                                                       |
+| `POST /convert/html/pdf`     | `fileInput`, `zoom` (default `1`)                                                                                                                                 |
+| `POST /convert/url/pdf`      | `urlInput` — internet URLs only: private network, loopback and `.local` hosts are rejected on this instance with a `303` redirect (not a 4xx), so check for `200` |
+| `POST /convert/img/pdf`      | `fileInput` (multiple), `fitOption` (`fillPage`/`fitDocumentToImage`/`fitDocumentToPage`/`maintainAspectRatio`, default `fillPage`), `colorType`, `autoRotate`    |
+| `POST /convert/file/pdf`     | `fileInput` — Word, Excel, PowerPoint, OpenDocument, RTF, CSV and text files → PDF (Stirling Office Convert). For web pages use `/convert/html/pdf`               |
 
 Other conversion endpoints, not detailed here but present in the API:
 `/convert/pdf/pdfa`, `/convert/pdf/presentation`, `/convert/pdf/xml`,
@@ -132,18 +132,18 @@ either) — except with `grayscale=true`. Compare the sizes to tell.
 
 ### POST /misc/ocr-pdf
 
-| Field             | Required | Default     | Description                                                                                                                                                                                                                                             |
-| ----------------- | -------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| fileInput         | yes      | —           | Input PDF                                                                                                                                                                                                                                               |
-| languages         | no       | `["eng"]`   | Language codes; which ones work depends on the `.traineddata` files installed on the server. Codes that aren't installed are dropped silently; if none is installed → 400 `none of the selected languages are valid`. Send a language alone to check it |
-| ocrType           | no       | `skip-text` | `skip-text` (OCR only pages without text) / `force-ocr` (rasterize and OCR every page) / `Normal` (as `skip-text` with OCRmyPDF; the Tesseract fallback OCRs every page)                                                                                |
-| ocrRenderType     | no       | `hocr`      | `hocr` (overlay text) / `sandwich` (hidden text layer) — server rejects any other value                                                                                                                                                                 |
-| sidecar           | no       | `false`     | `true` returns a ZIP with the PDF and a text file                                                                                                                                                                                                       |
-| rotatePages       | no       | `false`     | Auto-correct page orientation (90/180/270) with Tesseract OSD                                                                                                                                                                                           |
-| deskew            | no       | `false`     | Deskew skewed pages                                                                                                                                                                                                                                     |
-| clean             | no       | `false`     | Clean input before OCR                                                                                                                                                                                                                                  |
-| cleanFinal        | no       | `false`     | Clean final output                                                                                                                                                                                                                                      |
-| removeImagesAfter | no       | `false`     | Remove images from output                                                                                                                                                                                                                               |
+| Field             | Required | Default     | Description                                                                                                                                                                                                                                                                                    |
+| ----------------- | -------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| fileInput         | yes      | —           | Input PDF                                                                                                                                                                                                                                                                                      |
+| languages         | no       | `["eng"]`   | Language codes; which ones work depends on the `.traineddata` files installed on the server. `GET /ui-data/ocr-pdf` lists the installed ones (`{"languages": [...]}`). Codes that aren't installed are dropped silently; if none is installed → 400 `none of the selected languages are valid` |
+| ocrType           | no       | `skip-text` | `skip-text` (OCR only pages without text) / `force-ocr` (rasterize and OCR every page) / `Normal` (as `skip-text` with OCRmyPDF; the Tesseract fallback OCRs every page)                                                                                                                       |
+| ocrRenderType     | no       | `hocr`      | `hocr` (overlay text) / `sandwich` (hidden text layer) — server rejects any other value                                                                                                                                                                                                        |
+| sidecar           | no       | `false`     | `true` returns a ZIP with the PDF and a text file                                                                                                                                                                                                                                              |
+| rotatePages       | no       | `false`     | Auto-correct page orientation (90/180/270) with Tesseract OSD                                                                                                                                                                                                                                  |
+| deskew            | no       | `false`     | Deskew skewed pages                                                                                                                                                                                                                                                                            |
+| clean             | no       | `false`     | Clean input before OCR                                                                                                                                                                                                                                                                         |
+| cleanFinal        | no       | `false`     | Clean final output                                                                                                                                                                                                                                                                             |
+| removeImagesAfter | no       | `false`     | Remove images from output                                                                                                                                                                                                                                                                      |
 
 ### POST /misc/repair / POST /misc/flatten
 
@@ -175,24 +175,22 @@ There is no `allowDuplicates` field; don't send it.
 
 ### POST /misc/add-page-numbers
 
-| Field          | Required | Default   | Description                                                                                                                    |
-| -------------- | -------- | --------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| fileInput      | yes      | —         | Input PDF                                                                                                                      |
-| fontType       | yes      | —         | `helvetica` / `courier` / `times` (OpenAPI marks it required; omitted → Helvetica)                                             |
-| position       | no       | `8`       | 1-9 grid position (8 = bottom-center)                                                                                          |
-| pagesToNumber  | no       | `all`     | Which pages get numbers (`pageNumbers` is ignored here)                                                                        |
-| startingNumber | no       | `1`       | Number on the first numbered page                                                                                              |
-| fontSize       | no       | `12`      | Font size                                                                                                                      |
-| fontColor      | no       | `#000000` | Hex color                                                                                                                      |
-| zeroPad        | no       | `0`       | Zero-padding width (Bates stamping); `0` disables                                                                              |
-| customText     | no       | `{n}`     | `{n}` = running number (from `startingNumber`, counting numbered pages only), `{total}` = total pages, `{filename}` = filename |
-| customMargin   | no       | `medium`  | `small` / `medium` / `large` / `x-large`                                                                                       |
+| Field          | Required | Default     | Description                                                                                                                    |
+| -------------- | -------- | ----------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| fileInput      | yes      | —           | Input PDF                                                                                                                      |
+| fontType       | no       | `helvetica` | `helvetica` / `courier` / `times` (OpenAPI marks it required, but omitting it works)                                           |
+| position       | no       | `8`         | 1-9 grid position (8 = bottom-center)                                                                                          |
+| pagesToNumber  | no       | `all`       | Which pages get numbers (`pageNumbers` is ignored here)                                                                        |
+| startingNumber | no       | `1`         | Number on the first numbered page                                                                                              |
+| fontSize       | no       | `12`        | Font size                                                                                                                      |
+| fontColor      | no       | `#000000`   | Hex color                                                                                                                      |
+| zeroPad        | no       | `0`         | Zero-padding width (Bates stamping); `0` disables                                                                              |
+| customText     | no       | `{n}`       | `{n}` = running number (from `startingNumber`, counting numbered pages only), `{total}` = total pages, `{filename}` = filename |
+| customMargin   | no       | `medium`    | `small` / `medium` / `large` / `x-large`                                                                                       |
 
 Position grid: `1=top-left 2=top-center 3=top-right / 4=mid-left 5=center 6=mid-right / 7=bot-left 8=bot-center 9=bot-right`.
 
 ### POST /misc/add-stamp
-
-All defaults below are applied when the field is omitted.
 
 | Field                 | Required       | Default   | Description                                                                                                                                                                                                                                                  |
 | --------------------- | -------------- | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |

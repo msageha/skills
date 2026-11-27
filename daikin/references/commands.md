@@ -113,9 +113,15 @@ in wire order (`smart` 0, `manual` 1, `auto_fan` 2, `econo` 3, `pollen` 4,
 course; if it can't be read, don't set it.
 
 ```bash
+set -o pipefail
 # 2 = auto_fan here; use the index of the course just set
-curl -sf "https://daikin.msageha.net/api/tree" | jq -e '."e_1002/e_3007/p_03".value == 2' >/dev/null \
-  || { echo "humidify-side course not synced yet"; exit 1; }
+synced=
+for _ in $(seq 10); do
+  curl -sf -m 10 "https://daikin.msageha.net/api/tree" | jq -e '."e_1002/e_3007/p_03".value == 2' >/dev/null \
+    && { synced=1; break; }
+  sleep 1
+done
+[ -n "$synced" ] || { echo "humidify-side course not synced after 10 tries"; exit 1; }
 curl -s -X POST "https://daikin.msageha.net/api/humidity-setting" \
   -H "Content-Type: application/json" \
   -d '{"humidity_setting": "standard"}' | jq .
@@ -161,23 +167,25 @@ Prefer `/power`, `/humidify`, `/course`, `/fan-speed`, `/humidity-setting`
 when they cover the need. `pv` is a little-endian even-length hex string.
 Read the property first (`GET /tree` for `dgc_status`, `POST /read` for other
 containers — go on only if the target's `rsc` is `200x` and the property
-exists) and note its `pv`; keep the new value within `min`..`max` (for
-enum-like properties `max` is a bitmask of supported values — an undecodable
-value breaks `/status` with 502 until restored). Read back afterwards, and
+exists) and note its `pv`; keep the new value within the bounds (`min`..`max`
+in `/tree`, `md.mi`..`md.mx` in `/read`; for enum-like properties that upper
+bound is a bitmask of supported values — an undecodable value breaks
+`/status` with 502 until restored). Read back afterwards, and
 restore the original when probing.
 
 ```bash
+set -o pipefail
 # Before: note the current value; stop if the property can't be read
-curl -sf "https://daikin.msageha.net/api/tree" | jq -e '."e_1002/e_A002/p_01" // empty' \
+curl -sf "https://daikin.msageha.net/api/tree" | jq -e '."e_1002/e_A002/p_01".pv | strings' \
   || { echo "property not found"; exit 1; }
 
-# Equivalent of power off via raw write
-curl -s -X POST "https://daikin.msageha.net/api/write" \
+# Equivalent of power off via raw write, then read back and compare with the value sent
+curl -sf -X POST "https://daikin.msageha.net/api/write" \
   -H "Content-Type: application/json" \
   -d '{"to": "/dsiot/edge/adr_0100.dgc_status",
        "entity_path": ["e_1002", "e_A002", "p_01"],
-       "pv": "00", "confirm": true}' | jq .
-
-# After: read back
-curl -s "https://daikin.msageha.net/api/tree" | jq '."e_1002/e_A002/p_01"'
+       "pv": "00", "confirm": true}' >/dev/null \
+  || { echo "write failed — re-read the property before retrying"; exit 1; }
+curl -sf "https://daikin.msageha.net/api/tree" | jq -e '."e_1002/e_A002/p_01".pv == "00"' >/dev/null \
+  || { echo "read-back doesn't show the new value"; exit 1; }
 ```

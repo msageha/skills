@@ -153,25 +153,38 @@ curl -s "https://pihole.msageha.net/api/info/version" | jq .
 
 ```bash
 # Update Gravity (blocklists) — streams output, may take a while
+set -o pipefail
 base=https://pihole.msageha.net/api
-log=$(mktemp)
-before=$(curl -sf "$base/stats/summary" | jq -e '.gravity.last_update | numbers') || exit 1
-code=$(curl -sS -m 900 -o "$log" -w '%{http_code}' -X POST "$base/action/gravity") || { echo "request failed"; exit 1; }
+log=$(mktemp); trap 'rm -f "$log"' EXIT
+before=$(curl -sf -m 10 "$base/stats/summary" | jq -e '.gravity.last_update | numbers') \
+  || { echo "cannot read the current gravity state"; exit 1; }
+# If the request itself fails (timeout, dropped connection), gravity may still be
+# running on the server: the outcome is unknown, so check the lists later instead of rerunning
+code=$(curl -sS -m 900 -o "$log" -w '%{http_code}' -X POST "$base/action/gravity") \
+  || { echo "request failed; gravity result unknown"; exit 1; }
 # 409 = another run in progress; a failure after streaming started still returns 200
 if [ "$code" != 200 ] || tail -n 1 "$log" | grep -q 'Gravity failed$'; then
   echo "gravity failed (HTTP $code)"; tail -n 20 "$log"; exit 1
 fi
-# Pi-hole switches to the new database asynchronously; wait for last_update to change
+# FTL picks up the new database asynchronously; last_update changes once it has
 loaded=
 for _ in $(seq 60); do
-  now=$(curl -sf "$base/stats/summary" | jq -e '.gravity.last_update | numbers') && [ "$now" != "$before" ] && { loaded=1; break; }
+  now=$(curl -sf -m 10 "$base/stats/summary" | jq -e '.gravity.last_update | numbers') && [ "$now" != "$before" ] && { loaded=1; break; }
   sleep 1
 done
-[ -n "$loaded" ] || { echo "new gravity database not loaded yet"; exit 1; }
+[ -n "$loaded" ] || { echo "new gravity database not picked up yet"; exit 1; }
 # Enabled lists that failed (status 3/4) or imported nothing
-curl -sf "$base/lists" | jq '.lists[] | select(.enabled and (.status >= 3 or .number == 0)) | {address, status, number}'
+lists=$(curl -sf -m 30 "$base/lists") || { echo "cannot read the lists"; exit 1; }
+bad=$(jq -c '.lists[] | select(.enabled and (.status >= 3 or .number == 0)) | {address, status, number}' <<<"$lists") \
+  || { echo "unexpected /lists response"; exit 1; }
+[ -z "$bad" ] || { echo "gravity ran, but these lists failed:"; echo "$bad"; exit 1; }
+```
 
-# Restart DNS
+Restarting DNS interrupts name resolution for every client briefly and drops
+a pending blocking timer (the scheduled switch then never happens) — confirm with the user
+first, and re-check `GET /dns/blocking` afterwards.
+
+```bash
 curl -s -X POST "https://pihole.msageha.net/api/action/restartdns" | jq .
 ```
 
