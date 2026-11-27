@@ -27,14 +27,17 @@ file directly; `/analysis/*` and `/info/status` return JSON.
   Exception: `/convert/url/pdf` rejects a URL with a `303` redirect, which
   `-f` passes — check that the status is `200` there.
 - Send user-supplied text (passwords, `stampText`, metadata) with
-  `--form-string`: `-F` reads a value starting with `@` or `<` as a local file
-  and splits off `;type=…`.
+  `--form-string` in single quotes (write a `'` in the value as `'\''`): `-F`
+  reads a value starting with `@` or `<` as a local file and splits off
+  `;type=…`, and double quotes expand `$` and backticks.
 - OCR `languages` not installed on the server are dropped silently; list the
   installed ones with `GET /ui-data/ocr-pdf` before OCR.
 - `pageNumbers` supports ranges: `1,3,5-9`, `all`, or expressions like `2n+1`.
 - Uploads are limited to 2000 MB per request. Large files may take time;
   inform the user before starting.
-- Confirm before destructive operations (removing pages, adding passwords).
+- Confirm before operations that drop pages (`remove-pages`, a
+  `rearrange-pages` order that leaves pages out, `REMOVE_*` presets) or add or
+  remove protection (`add-password`, `remove-password`).
 
 ## Core operations
 
@@ -53,9 +56,11 @@ file directly; `/analysis/*` and `/info/status` return JSON.
 | Page count / basic info / properties                            | `POST /analysis/{page-count,basic-info,document-properties}`                     |
 | Server status                                                   | `GET /info/status`                                                               |
 
-Full field lists, defaults, and ready-to-run curl examples: see
-[references/api-reference.md](references/api-reference.md) and
-[references/commands.md](references/commands.md).
+Other endpoints, field lists and defaults come from the server's OpenAPI
+document; how to look them up, and behaviour it doesn't show (page removal,
+compression, OCR languages, metadata, passwords): see
+[references/api-reference.md](references/api-reference.md). Ready-to-run curl
+examples: [references/commands.md](references/commands.md).
 
 ## Obsidian Integration
 

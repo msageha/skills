@@ -1,18 +1,19 @@
 # EPGStation Command Recipes
 
-Ready-to-run `curl` examples for the endpoints listed in
-[api-reference.md](api-reference.md). Base URL: `https://epgstation.msageha.net/api`.
+Ready-to-run `curl` examples for common tasks. For other endpoints and for
+request/response schemas, see [api-reference.md](api-reference.md): how to look
+them up in the server's OpenAPI document, and what the document leaves out. Base URL: `https://epgstation.msageha.net/api`.
 
-The examples pipe to `jq` for brevity, which hides failures: an error body run
-through a field filter just shows `null`s, and the pipe exits 0. Before
-trusting a filtered result, check the request: run with `set -o pipefail` and
-`curl -sf`, or save the body with `-o <file>` and read the status from
-`-w '%{http_code}'`.
+The examples use `curl -s` for brevity, which exits 0 on an HTTP error, and pipe
+to `jq`, which turns an error body into `null`s. Before reporting a write as
+done or trusting a filtered result, check the request: run with
+`set -o pipefail` and `curl -sf`, or save the body with `-o <file>` and read
+the status from `-w '%{http_code}'`.
 
 ## Currently Broadcasting
 
 ```bash
-curl -s "https://epgstation.msageha.net/api/schedules/broadcasting?isHalfWidth=true" | jq '.[] | {channel: .channel.name, programs: [.programs[] | {name, description, startAt: (.startAt / 1000 | strftime("%H:%M")), endAt: (.endAt / 1000 | strftime("%H:%M"))}]}'
+curl -s "https://epgstation.msageha.net/api/schedules/broadcasting?isHalfWidth=true" | jq '.[] | {channel: .channel.name, programs: [.programs[] | {name, description, startAt: (.startAt / 1000 + 32400 | strftime("%H:%M")), endAt: (.endAt / 1000 + 32400 | strftime("%H:%M"))}]}'
 ```
 
 ## Channel List
@@ -24,8 +25,12 @@ curl -s "https://epgstation.msageha.net/api/channels" | jq '.[] | {id, name: .ha
 ## Channel Schedule
 
 ```bash
-# days=1 for today
-curl -s "https://epgstation.msageha.net/api/schedules/{channelId}?days=1&isHalfWidth=true" | jq '[.programs[] | {id, name, description, start: (.startAt / 1000 | strftime("%H:%M")), end: (.endAt / 1000 | strftime("%H:%M"))}]'
+# Today's schedule: startAt (required, Unix ms) = today's 00:00 JST, days=1 covers 24 h from it.
+# The response is an array of {channel, programs}; it also includes programs starting at the
+# next 00:00, so keep those airing before it
+start=$(( ($(date +%s) + 32400) / 86400 * 86400 - 32400 ))000
+end=$((start + 86400000))
+curl -s "https://epgstation.msageha.net/api/schedules/{channelId}?startAt=$start&days=1&isHalfWidth=true" | jq --argjson start "$start" --argjson end "$end" '[.[].programs[] | select(.startAt < $end and .endAt > $start) | {id, name, description, start: (.startAt / 1000 + 32400 | strftime("%H:%M")), end: (.endAt / 1000 + 32400 | strftime("%H:%M"))}]'
 ```
 
 ## Search Programs
@@ -45,10 +50,12 @@ curl -s -X POST "https://epgstation.msageha.net/api/schedules/search" \
       "CS": true,
       "SKY": true
     }
-  }' | jq '[.[] | .programs[] | {id, name, channelId, start: (.startAt / 1000 | strftime("%Y-%m-%d %H:%M")), end: (.endAt / 1000 | strftime("%H:%M")), description}]'
+  }' | jq '[.[] | {id, name, channelId, start: (.startAt / 1000 + 32400 | strftime("%Y-%m-%d %H:%M")), end: (.endAt / 1000 + 32400 | strftime("%H:%M")), description}]'
 ```
 
 ## Reserve (by Program ID)
+
+Confirm with the user before creating a reservation (also by time, below).
 
 ```bash
 curl -s -X POST "https://epgstation.msageha.net/api/reserves" \
@@ -75,12 +82,13 @@ curl -s -X POST "https://epgstation.msageha.net/api/reserves" \
 ## List Reservations
 
 ```bash
-curl -s "https://epgstation.msageha.net/api/reserves?isHalfWidth=true&limit=50" | jq '[.reserves[] | {id, name, channelId, start: (.startAt / 1000 | strftime("%Y-%m-%d %H:%M")), end: (.endAt / 1000 | strftime("%H:%M")), isSkip, isConflict}]'
+curl -s "https://epgstation.msageha.net/api/reserves?isHalfWidth=true&limit=50" | jq '[.reserves[] | {id, name, channelId, start: (.startAt / 1000 + 32400 | strftime("%Y-%m-%d %H:%M")), end: (.endAt / 1000 + 32400 | strftime("%H:%M")), isSkip, isConflict}]'
 ```
 
 ## Delete Reservation
 
 ```bash
+# Confirm with the user first
 curl -s -X DELETE "https://epgstation.msageha.net/api/reserves/{reserveId}"
 ```
 
@@ -93,16 +101,16 @@ curl -s "https://epgstation.msageha.net/api/reserves/cnts" | jq .
 ## Currently Recording
 
 ```bash
-curl -s "https://epgstation.msageha.net/api/recording?isHalfWidth=true" | jq '[.records[] | {id, name, channelId, start: (.startAt / 1000 | strftime("%H:%M")), end: (.endAt / 1000 | strftime("%H:%M"))}]'
+curl -s "https://epgstation.msageha.net/api/recording?isHalfWidth=true" | jq '[.records[] | {id, name, channelId, start: (.startAt / 1000 + 32400 | strftime("%H:%M")), end: (.endAt / 1000 + 32400 | strftime("%H:%M"))}]'
 ```
 
 ## List / Search Recorded Programs
 
 ```bash
-curl -s "https://epgstation.msageha.net/api/recorded?isHalfWidth=true&limit=20" | jq '[.records[] | {id, name, channelId, start: (.startAt / 1000 | strftime("%Y-%m-%d %H:%M")), isRecording, isProtected}]'
+curl -s "https://epgstation.msageha.net/api/recorded?isHalfWidth=true&limit=20" | jq '[.records[] | {id, name, channelId, start: (.startAt / 1000 + 32400 | strftime("%Y-%m-%d %H:%M")), isRecording, isProtected}]'
 
 # filtered by keyword
-curl -s "https://epgstation.msageha.net/api/recorded?isHalfWidth=true&keyword=キーワード&limit=20" | jq '[.records[] | {id, name, start: (.startAt / 1000 | strftime("%Y-%m-%d %H:%M"))}]'
+curl -s -G "https://epgstation.msageha.net/api/recorded" -d isHalfWidth=true -d limit=20 --data-urlencode 'keyword=<keyword>' | jq '[.records[] | {id, name, start: (.startAt / 1000 + 32400 | strftime("%Y-%m-%d %H:%M"))}]'
 ```
 
 ## Delete / Protect / Unprotect Recorded Program
@@ -115,6 +123,8 @@ curl -s -X PUT "https://epgstation.msageha.net/api/recorded/{recordedId}/unprote
 ```
 
 ## Add Auto-Recording Rule
+
+Confirm with the user before adding, editing, enabling, disabling or deleting a rule.
 
 ```bash
 curl -s -X POST "https://epgstation.msageha.net/api/rules" \
@@ -144,6 +154,7 @@ curl -s -X POST "https://epgstation.msageha.net/api/rules" \
 ```bash
 curl -s "https://epgstation.msageha.net/api/rules?offset=0&limit=20" | jq '[.rules[] | {id, keyword: .searchOption.keyword, enable: .reserveOption.enable, reservesCnt}]'
 
+# Deleting, disabling or enabling a rule — confirm with the user first
 curl -s -X DELETE "https://epgstation.msageha.net/api/rules/{ruleId}"
 curl -s -X PUT "https://epgstation.msageha.net/api/rules/{ruleId}/disable"
 curl -s -X PUT "https://epgstation.msageha.net/api/rules/{ruleId}/enable"
@@ -155,6 +166,6 @@ curl -s -X PUT "https://epgstation.msageha.net/api/rules/{ruleId}/enable"
 # JS: Date to UnixtimeMS
 node -e "console.log(new Date('2024-03-02T21:00:00+09:00').getTime())"
 
-# jq: UnixtimeMS to readable (JST)
-jq '.startAt / 1000 | strftime("%Y-%m-%d %H:%M")'
+# jq: UnixtimeMS to readable JST (strftime formats UTC, so add 9 h)
+jq '.startAt / 1000 + 32400 | strftime("%Y-%m-%d %H:%M")'
 ```

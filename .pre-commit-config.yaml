@@ -28,3 +28,10 @@ repos:
         # (例: mise.lock のみの commit) に exit 14 (No files found) で失敗しないようにする
         entry: mise exec -- dprint fmt --allow-no-files
         types_or: [json, yaml, markdown, toml]
+      - id: openapi-operation-copies
+        name: Keep the skills' openapi-operation.jq copies identical
+        language: system
+        # skill は 1 ディレクトリ単位で copy 配置もされ、skill の外のファイルを参照できないため、各 skill が同じファイルを持つ
+        entry: bash -c 'set -- {daikin,deco,epgstation,popin-aladdin,stirling-pdf}/scripts/openapi-operation.jq; for f; do cmp -- "$1" "$f" || exit 1; done' --
+        always_run: true
+        pass_filenames: false

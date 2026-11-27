@@ -1,25 +1,39 @@
 # Daikin MCK706A API Reference
 
 Base URL: `https://daikin.msageha.net/api`
-FastAPI wrapper (daikin-mck706a-api v0.1.0) around the Daikin MCK706A-W air
-purifier's local `dsiot` API (`POST /dsiot/multireq` on the unit). Requests to
-this instance don't need any authentication header/cookie; the reverse proxy
-admits only allowlisted LAN client IPs and rejects requests whose `Origin`
-header names another site (`403` otherwise). Interactive docs:
+FastAPI wrapper (daikin-mck706a-api) around the Daikin MCK706A-W air purifier's
+local `dsiot` API (`POST /dsiot/multireq` on the unit). Requests to this
+instance don't need any authentication header/cookie; the reverse proxy admits
+only allowlisted LAN client IPs and rejects requests whose `Origin` header
+names another site (`403` otherwise). Interactive docs:
 `https://daikin.msageha.net/docs`.
 
-Property semantics come from the official DAIKIN Smart App's air-purifier
-definitions (`GPFCjConvertValue` / `strings.xml`) and were checked on the real
-unit (FW `3_15_0`, `api_ver 2_2`):
+This file holds what the OpenAPI document doesn't say: errors, the values the
+MCK706A actually accepts, how the two operation sides interact, and the raw
+dsiot layer. Read field-level schemas from the OpenAPI document.
 
-| Confidence                         | Fields                                                                                                                                                   |
-| ---------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Verified by writing to the unit    | `power`, `humidify`, `course`, `fan_speed`, `humidity_setting`                                                                                           |
-| Verified by reading                | `temperature_c`, `humidity_pct`                                                                                                                          |
-| Official app definition, read-only | `pm25_level`, `dust_level`, `odor_level`, `water_supply_sign`, `filter_drying`, `deodorizing_filter_off_sign`, `streamer_maintenance_sign`, `error_code` |
-| Unit unknown                       | `pm25_raw`, `dust_raw`, `odor_raw` (assumed source of the app's history graph)                                                                           |
+## Request / response schemas
+
+`https://daikin.msageha.net/openapi.json` (generated from the server code, same
+access rules as the API) has every endpoint's fields, types, required flags,
+enums and response models, with field descriptions in Japanese. Look up one
+operation instead of reading the whole document:
+
+```bash
+# List operations. Paths in the document start with /api, the Base URL's path
+curl -sf "https://daikin.msageha.net/openapi.json" | jq -er '.paths | to_entries[]
+  | .key as $p | .value | to_entries[] | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
+
+# One operation with its $refs inlined (<skill-dir>: the directory of this skill's SKILL.md)
+curl -sf "https://daikin.msageha.net/openapi.json" | jq -e -f "<skill-dir>/scripts/openapi-operation.jq" --arg method get --arg path /api/status
+```
+
+Every `/status` and `/info` field is nullable: a value the unit didn't return
+is `null`.
 
 ## Errors
+
+The OpenAPI document lists only `200` / `422`; the server also returns:
 
 | Status | Meaning                                                                                                                                                                                     |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -31,106 +45,56 @@ unit (FW `3_15_0`, `api_ver 2_2`):
 
 Requests are serialized behind a server-side lock; concurrent calls queue up.
 
----
+The control endpoints echo the value set (`{"power": true}`,
+`{"humidify": false}`, `{"course": "pollen"}`, `{"fan_speed": "turbo"}`,
+`{"humidity_setting": "standard"}`); a 200 means the unit accepted the write.
+`GET /health` returns `{"status": "ok", "host": <unit URL>}` without touching
+the unit.
 
-## GET /health
+## Values the MCK706A accepts
 
-Server status without touching the unit.
+The OpenAPI enums list every value the dsiot protocol defines (in wire order,
+0-based); the MCK706A supports only part of them:
 
-```json
-{ "status": "ok", "host": "http://172.16.1.161" }
-```
-
----
-
-## GET /info
-
-Device and adapter information (reads `edge.adp_i`, `edge.adp_d`, `edge.adp_r`,
-`edge.dev_i`). All fields nullable.
-
-| Field               | Type    | Description                                                                              |
-| ------------------- | ------- | ---------------------------------------------------------------------------------------- |
-| name                | string  | User-assigned device name                                                                |
-| device_type         | string  | dsiot device type code (`1D` = air purifier, `RA` = room air conditioner)                |
-| mac                 | string  | Wi-Fi adapter MAC address                                                                |
-| firmware            | string  | Adapter firmware version, e.g. `3_15_0`                                                  |
-| revision            | string  | Firmware revision                                                                        |
-| region              | string  | Region code, e.g. `jp`                                                                   |
-| ssid                | string  | SSID of the adapter's own setup access point (e.g. `DaikinAP12345`) — not the home Wi-Fi |
-| wlan_ssid           | string  | SSID of the Wi-Fi network the adapter is connected to                                    |
-| wlan_rssi_dbm       | integer | Signal strength of that connection in dBm, e.g. `-46`                                    |
-| api_ver             | string  | dsiot API version, e.g. `2_2`                                                            |
-| led                 | boolean | Status LED enabled                                                                       |
-| timezone_offset_min | integer | Timezone offset from UTC in minutes, e.g. `540` (JST)                                    |
-
----
-
-## GET /status
-
-Operation state and sensors (reads `adr_0100.dgc_status`). All fields nullable.
-
-```json
-{
-  "power": true,
-  "humidify": false,
-  "course": "smart",
-  "fan_speed": "quiet",
-  "humidity_setting": null,
-  "temperature_c": 23.0,
-  "humidity_pct": 73,
-  "pm25_level": 0,
-  "dust_level": 0,
-  "odor_level": 0,
-  "pm25_raw": 659,
-  "dust_raw": 624,
-  "odor_raw": 1018,
-  "water_supply_sign": false,
-  "filter_drying": false,
-  "deodorizing_filter_off_sign": false,
-  "streamer_maintenance_sign": false,
-  "error_code": "00-00"
-}
-```
-
-| Field                                | Type    | Description                                                                                                                                      |
-| ------------------------------------ | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| power                                | boolean | Purifier running                                                                                                                                 |
-| humidify                             | boolean | Operation changeover: `true` = humidify + purify, `false` = purify only                                                                          |
-| course                               | enum    | Course selected on the current changeover side (values below)                                                                                    |
-| fan_speed                            | enum    | Manual-course fan speed on the current changeover side; other courses ignore it                                                                  |
-| humidity_setting                     | enum    | Humidity target of the humidify-side course; `null` when that course is `smart` / `moist` (automatic). Returned even while `humidify` is `false` |
-| temperature_c                        | number  | Room temperature in °C (0.5 °C steps)                                                                                                            |
-| humidity_pct                         | integer | Relative humidity in %                                                                                                                           |
-| pm25_level / dust_level / odor_level | integer | `0` (clean / no odor) .. `5`                                                                                                                     |
-| pm25_raw / dust_raw / odor_raw       | integer | Raw sensor values, unit unknown — relative readings only                                                                                         |
-| water_supply_sign                    | boolean | Humidifier tank is empty                                                                                                                         |
-| filter_drying                        | boolean | Humidifier filter drying run in progress                                                                                                         |
-| deodorizing_filter_off_sign          | boolean | Deodorizing filter is detached                                                                                                                   |
-| streamer_maintenance_sign            | boolean | Streamer unit needs cleaning                                                                                                                     |
-| error_code                           | string  | Unit error code; `00-00` = normal                                                                                                                |
-
-The unit keeps separate course / fan-speed settings for the purify side and the
-humidify side; on the MCK706A a change on one side is mirrored to the other a
-few seconds later. `POST /humidity-setting` writes to the humidify-side
-course, so after changing the course while purifying only, wait until the
-humidify-side course has synced before setting the humidity — otherwise it
-goes to the previous course or 409. `GET /status` can't show this while
-purifying only (`course` is then the purify side); read `e_1002/e_3007/p_03`
-in `GET /tree` (its `value` is the course index in the wire order below).
-
-### Values
-
-| Field            | Values (wire order)                                                                                                                  | MCK706A                                                                                                    |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
-| course           | `smart` `manual` `auto_fan` `econo` `pollen` `moist` `circulator` `laundry_dry` `night_laundry_dry` `water_deodorize` `internal_dry` | `smart` .. `circulator`; `moist` only while humidifying                                                    |
-| fan_speed        | `quiet` `low` `standard` `high` `turbo`                                                                                              | all but `high`; only takes effect while `course` is `manual`                                               |
-| humidity_setting | `off` `low` `standard` `high` `continuous`                                                                                           | `low` / `standard` / `high`; automatic (not settable) while the humidify-side course is `smart` or `moist` |
+| Field            | MCK706A                                                                                                                    |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| course           | `smart` `manual` `auto_fan` `econo` `pollen` `moist` `circulator`; `moist` only while humidifying                          |
+| fan_speed        | `quiet` `low` `standard` `turbo` (no `high`); only takes effect while `course` is `manual`                                 |
+| humidity_setting | `low` `standard` `high`; automatic (not settable, `null` in `/status`) while the humidify-side course is `smart` / `moist` |
 
 Before writing, the server checks the value against the bitmask the unit
 advertises for the property (`md.mx`) and returns `409` when it isn't
-supported.
+supported. `POST /humidify` returns `409` if the unit can't humidify.
 
-### Underlying dsiot properties (under `adr_0100.dgc_status`)
+Semantics come from the official DAIKIN Smart App's air-purifier definitions
+and were checked on the real unit (FW `3_15_0`, `api_ver 2_2`): `power`,
+`humidify`, `course`, `fan_speed`, `humidity_setting` by writing,
+`temperature_c` / `humidity_pct` by reading. The air-quality levels and
+maintenance signs follow the app's definitions only; the `*_raw` sensor values
+have no known unit.
+
+## Purify side and humidify side
+
+The unit keeps separate course / fan-speed settings for the purify side and the
+humidify side; `humidify` decides which side `POST /course` and
+`POST /fan-speed` write, and `/status` reports. On the MCK706A a change on one
+side is mirrored to the other a few seconds later.
+
+`POST /humidity-setting` writes to the humidify-side course, even while
+`humidify` is `false` (it applies once humidifying starts). After changing the
+course while purifying only, wait until the humidify side has synced before
+setting the humidity — otherwise it goes to the previous course or `409`.
+`/status` can't show this while purifying only (`course` is then the purify
+side); read `e_1002/e_3007/p_03` in `GET /tree` (its `value` is the course
+index in wire order).
+
+## Raw dsiot layer (`/tree`, `/read`, `/write`)
+
+### Properties under `adr_0100.dgc_status`
+
+`GET /tree` returns every decoded leaf of this container, keyed by these paths.
+For enum-like properties `max` is a bitmask of supported values (bit n =
+value n), not an upper bound.
 
 | Field                                                           | Property path                                                                     | Encoding                                                                       |
 | --------------------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
@@ -148,122 +112,18 @@ supported.
 | error_code                                                      | `e_1002/e_A004/p_09`                                                              | ASCII                                                                          |
 
 Properties without an official definition (parts of `e_3007/p_2B`..`p_3D`,
-`e_205E`, `e_205F_*`) are not in `/status`; inspect them with `GET /tree`.
+`e_205E`, `e_205F_*`) are not in `/status`; inspect them with `GET /tree`
+(poll it repeatedly and watch which values change).
 
----
+### POST /read
 
-## POST /power
-
-Turn the purifier on or off. No `confirm` needed.
-
-| Field | Type    | Required | Description                |
-| ----- | ------- | -------- | -------------------------- |
-| on    | boolean | yes      | `true` = on, `false` = off |
-
-Response: `{ "power": true }`
-
----
-
-## POST /humidify
-
-Operation changeover. No `confirm` needed.
-
-| Field | Type    | Required | Description                                       |
-| ----- | ------- | -------- | ------------------------------------------------- |
-| on    | boolean | yes      | `true` = humidify + purify, `false` = purify only |
-
-Response: `{ "humidify": true }`. `409` if the unit doesn't support humidifying.
-
----
-
-## POST /course
-
-Set the course on the current changeover side (`humidify` decides which side
-is written). No `confirm` needed.
-
-| Field  | Type | Required | Description                      |
-| ------ | ---- | -------- | -------------------------------- |
-| course | enum | yes      | One of the `course` values above |
-
-Response: `{ "course": "pollen" }`. `409` when the course can't be selected
-right now (e.g. `moist` while `humidify` is `false`, or a course the unit
-doesn't have).
-
----
-
-## POST /fan-speed
-
-Set the manual fan speed on the current changeover side. It only affects the
-airflow while `course` is `manual`. No `confirm` needed.
-
-| Field     | Type | Required | Description                         |
-| --------- | ---- | -------- | ----------------------------------- |
-| fan_speed | enum | yes      | One of the `fan_speed` values above |
-
-Response: `{ "fan_speed": "turbo" }`. `409` for an unsupported speed (`high`
-on the MCK706A).
-
----
-
-## POST /humidity-setting
-
-Set the humidity target of the humidify-side course. Works even while
-`humidify` is `false` (the value applies once humidifying starts). No
-`confirm` needed.
-
-| Field            | Type | Required | Description                                |
-| ---------------- | ---- | -------- | ------------------------------------------ |
-| humidity_setting | enum | yes      | One of the `humidity_setting` values above |
-
-Response: `{ "humidity_setting": "standard" }`. `409` when the humidify-side
-course is `smart` / `moist` (automatic) or the value isn't supported.
-
----
-
-## GET /tree
-
-Every decoded leaf of `adr_0100.dgc_status`, keyed by property path. Useful
-for exploring/identifying unmapped sensors (poll repeatedly and watch which
-fields change).
-
-Each value is a `DecodedLeaf`:
-
-| Field     | Type   | Description                                                                                                                                  |
-| --------- | ------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| pv        | any    | Raw dsiot value (LE hex string, int, or string)                                                                                              |
-| value     | any    | Best-effort decoded value (hex → int when type is `b`)                                                                                       |
-| type      | string | `b` (hex binary) / `i` (int) / `s` (string)                                                                                                  |
-| min / max | string | Bounds advertised by the device (hex). For enum-like properties `max` is a bitmask of supported values (bit n = value n), not an upper bound |
-| ascii     | string | ASCII rendering of a hex `pv` that looks like text                                                                                           |
-
-```json
-{
-  "e_1002/e_A002/p_01": {
-    "pv": "01",
-    "value": 1,
-    "type": "b",
-    "min": "00",
-    "max": "01"
-  },
-  "...": {}
-}
-```
-
----
-
-## POST /read
-
-Raw read of arbitrary dsiot addresses. Read-only, safe.
-
-| Field   | Type     | Required | Description                                                    |
-| ------- | -------- | -------- | -------------------------------------------------------------- |
-| targets | string[] | yes      | Non-empty; each must start with `/dsiot/` (no `..`, no scheme) |
-
-Response: raw dsiot responses keyed by address (`fr`). Each has `rsc`
-(`200x` = OK; errors such as `4041` come back inside the 200, so check each)
-and a property-node tree `pc` — nodes carry `pn` (name),
-`pt` (`1` = container with `pch` children, else leaf), `pv` (leaf value),
-`md` (encoding meta: `pt` = `b`/`i`/`s`, `mi`/`mx` = hex bounds or bitmask).
+Read-only. Each target must start with `/dsiot/` and contain no `..` or
+`://`. The response (untyped in the OpenAPI document) is the raw dsiot
+responses keyed by address (`fr`). Each has `rsc` (`200x` = OK; errors such as
+`4041` come back inside the HTTP 200, so check each) and a property-node tree
+`pc` — nodes carry `pn` (name), `pt` (`1` = container with `pch` children,
+else leaf), `pv` (leaf value), `md` (encoding meta: `pt` = `b`/`i`/`s`,
+`mi`/`mx` = hex bounds or bitmask).
 
 Known addresses (`/dsiot/edge` lists all of them in one read):
 
@@ -280,35 +140,26 @@ Known addresses (`/dsiot/edge` lists all of them in one read):
 
 `adr_0100.history` and `adr_0100.i_power.*` answer `4041` on this unit.
 
----
+### POST /write
 
-## POST /write
-
-Raw write to one dsiot property. **Destructive — can change arbitrary unit
+Raw write to one dsiot property; `to` is a container address: same rules as
+`/read`, and its last segment must contain a `.` (e.g.
+`/dsiot/edge/adr_0100.dgc_status`; `/dsiot/edge` → 422). The response is `{"written": {to, entity_path, pv}, "result": <dsiot
+response>}` — `written` echoes the request, `result` is the unit's answer.
+**Destructive — can change arbitrary unit
 settings. Confirm with the user first and prefer the purpose-built endpoints
 (`/power`, `/humidify`, `/course`, `/fan-speed`, `/humidity-setting`) when
-they cover the need.**
-
-| Field       | Type     | Required | Description                                                                                             |
-| ----------- | -------- | -------- | ------------------------------------------------------------------------------------------------------- |
-| to          | string   | yes      | dsiot container address, e.g. `/dsiot/edge/adr_0100.dgc_status`                                         |
-| entity_path | string[] | yes      | Non-empty property name chain under the root, each `[A-Za-z0-9_]+`, e.g. `["e_1002", "e_A002", "p_01"]` |
-| pv          | string   | yes      | Little-endian hex value, non-empty and even length, e.g. `"01"`                                         |
-| confirm     | `true`   | yes      | Must be literally `true`; missing or `false` is rejected with 422                                       |
-
-Unknown body fields are rejected (`extra=forbid`); `confirm` must be the JSON
-`true` (`1` or `"true"` → 422).
+they cover the need.** `confirm` must be the JSON `true` (`1` or `"true"` →
+422).
 
 The unit stores values outside its supported set as-is. Before writing, read
 the property — `GET /tree` for `dgc_status` (bounds in `min` / `max`),
 `POST /read` for other containers (`md.mi` / `md.mx`) — note its current
 value, and write only a value within the bounds (for enum-like properties,
-the upper bound is a bitmask: only values whose bit is set are supported). Read back
-afterwards, and restore the original when probing. A value `/status` can't
-decode (e.g. `01` to the changeover property, or a course index ≥ 11) leaves
-`GET /status` returning 502 until a supported value is restored — with the
-setter that writes that property where one does (`/humidify` for the
-changeover; `/course` / `/fan-speed` for the current side), otherwise with
-another `/write` (e.g. the side not currently active).
-
-Response: `{ "written": { "to": ..., "entity_path": [...], "pv": ... }, "result": <dsiot response> }`
+the upper bound is a bitmask: only values whose bit is set are supported).
+Read back afterwards, and restore the original when probing. A value
+`/status` can't decode (e.g. `01` to the changeover property, or a course
+index ≥ 11) leaves `GET /status` returning 502 until a supported value is
+restored — with the setter that writes that property where one does
+(`/humidify` for the changeover; `/course` / `/fan-speed` for the current
+side), otherwise with another `/write` (e.g. the side not currently active).

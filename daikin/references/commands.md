@@ -1,14 +1,15 @@
 # Daikin MCK706A Command Recipes
 
-Ready-to-run `curl` examples for the endpoints listed in
-[api-reference.md](api-reference.md). Base URL: `https://daikin.msageha.net/api`.
+Ready-to-run `curl` examples for common tasks. For other endpoints and for
+request/response schemas, see [api-reference.md](api-reference.md): how to look
+them up in the server's OpenAPI document, and what the document leaves out. Base URL: `https://daikin.msageha.net/api`.
 Run requests sequentially — the server serializes them behind one unit session.
 
-The examples pipe to `jq` for brevity, which hides failures: an error body run
-through a field filter just shows `null`s, and the pipe exits 0. Before
-trusting a filtered result, check the request: run with `set -o pipefail` and
-`curl -sf`, or save the body with `-o <file>` and read the status from
-`-w '%{http_code}'`.
+The examples use `curl -s` for brevity, which exits 0 on an HTTP error, and pipe
+to `jq`, which turns an error body into `null`s. Before reporting a write as
+done or trusting a filtered result, check the request: run with
+`set -o pipefail` and `curl -sf`, or save the body with `-o <file>` and read
+the status from `-w '%{http_code}'`.
 
 ## Health
 
