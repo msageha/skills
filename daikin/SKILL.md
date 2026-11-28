@@ -28,7 +28,8 @@ means one of these, not an API error.
   unit — report them by name. `pm25_level` / `dust_level` / `odor_level` are
   `0` (clean) .. `5`; the `*_raw` sensor values have no known unit — present
   them as relative readings.
-- Purpose-built controls that don't need user confirmation: `POST /power`
+- Purpose-built controls, run without further confirmation when the user asks
+  for the change: `POST /power`
   (`{"on": bool}`), `POST /humidify` (`{"on": bool}` — `true` humidify +
   purify, `false` purify only), `POST /course` (`{"course": "<name>"}`),
   `POST /fan-speed` (`{"fan_speed": "<name>"}`, only takes effect while
@@ -47,12 +48,13 @@ means one of these, not an API error.
   it return 502 until the property is restored. So before `POST /write`, read
   the property (`GET /tree` for `dgc_status`, `POST /read` for other
   containers) and note its `pv`.
-- Keep the written value within the property's bounds: `min`..`max` in
-  `/tree`, `md.mi`..`md.mx` in `/read`. For enum-like properties the upper
-  bound is a bitmask of the supported values: write a value whose bit is set
-  in it, not the mask itself.
-- After `POST /write`, read the property back; when probing, restore the
-  original `pv` afterwards.
+- Write only a supported value. For a numeric property that is `min`..`max`
+  in `/tree` (`md.mi`..`md.mx` in `/read`). For an enum-like property `max`
+  (`md.mx`) isn't an upper bound but a bitmask of the supported values (bit n
+  = value n): write a value n whose bit is set, not the mask itself.
+- After `POST /write`, read the property back. Don't write to the unit to
+  find out what a property does: explore with `GET /tree` and `POST /read`,
+  and write only a change the user asked for.
 - `POST /read` and `GET /tree` are read-only and safe; `POST /read` returns
   per-address dsiot errors inside a 200, so check each `rsc`.
 - After `POST /course` while purifying only, wait until the humidify side
@@ -60,12 +62,21 @@ means one of these, not an API error.
   `/status.course` shows the purify side then) before
   `POST /humidity-setting`; otherwise it writes to the previous course or
   returns 409.
-- Treat a request as successful only when curl exits 0 and the HTTP status
-  is the one the operation returns on success; `| jq` output proves neither
-  (without `set -o pipefail`, `curl … | jq` exits with jq's status, and
-  `curl -f` lets a `3xx` through). Save the body with `-o <file>`, read the
-  status with `-w '%{http_code}'`, and process the body only after both
-  checks pass.
+- Before reporting a write as done or acting on a result, check that curl
+  exited 0 and that the HTTP status is the one the operation returns on
+  success. The output of `curl … | jq` doesn't show it: `jq .` prints a JSON
+  error body like any other, a filter turns its missing fields into `null`, and a
+  failed connection prints nothing. For a write, save the body with
+  `-o <file>`, read the status with `-w '%{http_code}'`, and use the body only
+  after both checks pass. For a read a later step depends on,
+  `set -o pipefail` with `curl -sf` and a `jq -e` expression that holds
+  only for the expected answer (an error body must fail it) also works: an error body, empty body or HTML page then fails `jq -e`, but a
+  `3xx` whose body has that field passes, so check the status where a
+  redirect is possible.
+- Report a write as done only after reading the new state back: `GET /status`
+  for the purpose-built controls (`fan_speed` shows the effect only while
+  `course` is `manual`; `humidity_setting` is `null` while it is automatic),
+  and the property in `GET /tree` or `POST /read` after `POST /write`.
 - Errors: `409` unsupported value / not selectable in the current state,
   `422` request validation (including a missing `confirm`), `502` unit
   returned an error or an undecodable value (`detail` + dsiot `rsc`; `200x`

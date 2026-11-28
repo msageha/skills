@@ -22,16 +22,34 @@ the caller isn't on that list, not an API error. Pi-hole itself answers `401`
 
 - Session-based SID auth exists for password-protected instances (`POST /auth`,
   header/query/cookie `sid`) but isn't needed for this instance.
-- When disabling blocking, always pass a positive `timer` (seconds) unless the
-  user explicitly wants it disabled indefinitely — warn them either way. `0`,
+- Toggle blocking only when the user asks, and confirm it with current → new
+  first: it changes DNS for the whole network, and a new request replaces any
+  running timer (read `GET /dns/blocking` for the current `{blocking, timer}`).
+  When disabling it, always pass a
+  positive `timer` (seconds) unless the user explicitly wants it disabled
+  indefinitely — warn them either way. `0`,
   a negative value, `null` or no `timer` means no timer (indefinite); check
   the `timer` in the response. The timer doesn't survive a Pi-hole restart
   (blocking then stays off), so re-check the state if one happened.
-- Confirm with the user before modifying allow/deny lists or adlists,
-  running a gravity update (it can take a while), restarting DNS
-  (`POST /action/restartdns` interrupts resolution and drops a pending
-  blocking timer), or flushing the logs or the network table
-  (`POST /action/flush/*`, irreversible).
+- Changes to DNS filtering and configuration (allow/deny lists, adlists,
+  groups, clients, `PATCH /config`, `POST /teleporter`) change name
+  resolution for the whole network: read the current entries first and
+  confirm with current → new, even when the request is specific.
+  `POST /teleporter` overwrites the configuration and `PATCH /config` changes
+  settings in it: ask the user to take a backup with `GET /teleporter` first.
+  The backup can hold password hashes and 2FA secrets, so the user downloads
+  and keeps it; don't download or open it yourself. When reading `/config`,
+  select only the settings involved.
+- Confirm these even when the user asked for them, naming the effect: a
+  gravity update (it can take a while) and `POST /action/restartdns` (it
+  interrupts resolution and drops a pending blocking timer).
+- Any other request that changes state (any method but `GET`) runs without
+  asking again when the user asked for it with the target settled, including
+  deletions (`POST /action/flush/*` deletes the logs or the network table
+  irreversibly; deleting devices, leases or messages). Confirm once when you
+  chose the request yourself or when the request doesn't settle the target.
+- `GET /auth/app` and `GET /auth/totp` create credentials (an application
+  password, a 2FA secret): don't call them; the user sets them up.
 - The set of block adlists and exact / regex allow rules is synced from files
   in the local-home-services repository (`dns-server/config/adlists.list`,
   `whitelist.txt`, `whitelist-regex.txt`) at startup and monthly: after the
@@ -42,16 +60,30 @@ the caller isn't on that list, not an API error. Pi-hole itself answers `401`
   month). For these synced entries, API changes are temporary — tell the
   user; lasting ones need the files changed. Deny rules and allow adlists
   aren't synced, so API changes to them last.
-- Treat a request as successful only when curl exits 0 and the HTTP status
-  is the one the operation returns on success; `| jq` output proves neither
-  (without `set -o pipefail`, `curl … | jq` exits with jq's status, and
-  `curl -f` lets a `3xx` through). Save the body with `-o <file>`, read the
-  status with `-w '%{http_code}'`, and process the body only after both
-  checks pass.
+- Before reporting a write as done or acting on a result, check that curl
+  exited 0 and that the HTTP status is the one the operation returns on
+  success. The output of `curl … | jq` doesn't show it: `jq .` prints a JSON
+  error body like any other, a filter turns its missing fields into `null`, and a
+  failed connection prints nothing. For a write, save the body with
+  `-o <file>`, read the status with `-w '%{http_code}'`, and use the body only
+  after both checks pass. For a read a later step depends on,
+  `set -o pipefail` with `curl -sf` and a `jq -e` expression that holds
+  only for the expected answer (an error body must fail it) also works: an error body, empty body or HTML page then fails `jq -e`, but a
+  `3xx` whose body has that field passes, so check the status where a
+  redirect is possible.
+- Report a write as done only after reading it back: `GET /dns/blocking`,
+  `GET /domains/{type}/{kind}/{domain}`, `GET /lists`, and the matching `GET`
+  for other changes.
   Adding several domains in one `POST /domains/…` returns
   `201` even if some fail — check `processed.errors`. A gravity
   update reports failure as `Gravity failed` at the end of a 200 body
   (`409` = another run in progress).
+- List URLs (`address` in `/lists`, `/search`, `POST /lists` responses, and the
+  gravity log) can carry credentials or tokens in any part: don't print them;
+  refer to a list by its `id`, and don't print the gravity log itself. To add
+  a URL that carries credentials, the user writes it to a file and the body is
+  built from it (`jq -n --rawfile u "<url-file>" '{address: ($u | sub("\r?\n$"; ""))}'`),
+  so the URL stays out of the command.
 - `GET /search/{domain}` shows which lists contain a domain; it doesn't apply
   group assignments or allow rules, so it doesn't prove a given client is
   blocked — use the query log (`GET /queries?domain=…&client_ip=…`) for that.

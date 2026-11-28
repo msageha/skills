@@ -38,13 +38,27 @@ an API error.
   shortcuts `netflix` `youtube` `prime_video` `custom` `custom_long`. `power`
   only opens the on-screen power menu — it does not switch the unit off.
 - `POST /power/off` (`{"confirm": true}` required) really powers the
-  projector down, and this API cannot turn it back on — always confirm with
-  the user first.
+  projector down, and this API cannot turn it back on. The request doesn't
+  show that, so confirm with the user first, saying it can't be undone here.
 - DLNA endpoints (`/status`, `/volume`, `/mute`, playback, `/cast`, `/soap`)
   need the projector running: with only the ceiling light on, or the
   projector off, they fail with `504` "cannot reach". The light's on/off
   state can't be read in any state. A `504` from them doesn't
   by itself prove the projector is off (any network failure gives it).
+- `/keyboard`, `/voice` and `/deeplink` echo what they were sent, and `/cast`
+  echoes the URI: select fields so the echo isn't printed. `/status`, `/media`
+  and `/position` return the current URIs and their metadata, which can carry
+  tokens: drop `current_uri*` / `track_uri*` / `*_metadata` when printing, and
+  compare a URI with `jq -e` (true / false) instead of showing it. The raw SOAP
+  `GetMediaInfo` / `GetPositionInfo` return the same values as `CurrentURI`,
+  `CurrentURIMetaData`, `NextURI`, `NextURIMetaData`, `TrackURI` and
+  `TrackMetaData`: drop those too. Don't send
+  passwords or other secrets through them unless the user explicitly hands
+  that over; then build the body from the user's file
+  (`jq -n --rawfile t "<secret-file>" '{text: ($t | sub("\r?\n$"; ""))}'`, with
+  `url` for `/deeplink` and `uri` for `/cast`) and
+  send it with `-o /dev/null -w '%{http_code}'`, so the value never reaches
+  your output.
 - `GET /discover` returns `[]` on this instance (the server runs on a Docker
   bridge network, so its LAN broadcast reaches no device); the unit's address
   is fixed in the server config, so it isn't needed.
@@ -65,16 +79,29 @@ an API error.
   `power`, text input, voice, ping. The other keys, `/remote/*` info
   endpoints, `/discover`, `/deeplink`, `/memory/free`, `/capture` and
   `/power/off` were reconstructed from the official app and are unverified.
-- Writes are immediately visible in the room (light/volume/playback). Safe to
-  do when asked; confirm first for `/power/off`, stopping or skipping active playback,
-  casting over running content (or when you can't tell), and `/soap` actions outside its read-only
-  list (`confirm: true` required).
-- Treat a request as successful only when curl exits 0 and the HTTP status
-  is the one the operation returns on success; `| jq` output proves neither
-  (without `set -o pipefail`, `curl … | jq` exits with jq's status, and
-  `curl -f` lets a `3xx` through). Save the body with `-o <file>`, read the
-  status with `-w '%{http_code}'`, and process the body only after both
-  checks pass.
+- Writes are immediately visible in the room (light/volume/playback). Run
+  them when the user asks, without asking again. Confirm first for
+  `/power/off`, for stopping or skipping active playback the user didn't ask
+  to stop, for casting over running content (or when you can't tell), and for
+  `/soap` actions outside its read-only list (`confirm: true` required).
+- Report a write as done only after reading the effect back where it is
+  observable: `GET /volume` / `GET /mute`, `GET /media` and `GET /transport`
+  after `/cast` or playback controls, `GET /position` after `/seek`, the
+  read-only SOAP `GetTransportSettings` after `/play-mode`, and
+  `/remote/device` for app launches. The
+  light's state and most key presses can't be read: report them as sent, with
+  the effect unconfirmed.
+- Before reporting a write as done or acting on a result, check that curl
+  exited 0 and that the HTTP status is the one the operation returns on
+  success. The output of `curl … | jq` doesn't show it: `jq .` prints a JSON
+  error body like any other, a filter turns its missing fields into `null`, and a
+  failed connection prints nothing. For a write, save the body with
+  `-o <file>`, read the status with `-w '%{http_code}'`, and use the body only
+  after both checks pass. For a read a later step depends on,
+  `set -o pipefail` with `curl -sf` and a `jq -e` expression that holds
+  only for the expected answer (an error body must fail it) also works: an error body, empty body or HTML page then fails `jq -e`, but a
+  `3xx` whose body has that field passes, so check the status where a
+  redirect is possible.
 - Errors: `400` missing or false `confirm` (`/soap` non-read-only actions, `/power/off`), `422`
   body validation (unknown button, volume out of range, …), `502` device
   returned a SOAP fault or an unexpected answer (`detail`; SOAP faults add

@@ -5,11 +5,29 @@ request/response schemas, see [api-reference.md](api-reference.md): how to look
 them up in the server's OpenAPI document, and what the document leaves out. Base URL: `https://daikin.msageha.net/api`.
 Run requests sequentially — the server serializes them behind one unit session.
 
-The examples use `curl -s` for brevity, which exits 0 on an HTTP error, and pipe
-to `jq`, which turns an error body into `null`s. Before reporting a write as
-done or trusting a filtered result, check that curl exited 0 (with
-`set -o pipefail` when piping) and that the status from `-w '%{http_code}'`
-(body saved with `-o <file>`) is the one the operation returns on success.
+Most examples use `curl -s … | jq` for brevity, which shows the body but not
+whether the request succeeded (see the success check in SKILL.md). Send a write
+with the body saved to a file and the status printed, using the operation's
+method and body:
+
+```bash
+curl -sS -o "<body-file>" -w '%{http_code}\n' -X POST "<url>" -H "Content-Type: application/json" -d '<body>'
+```
+
+Go on only when curl exited 0 and the printed status is the one the operation
+returns on success, then read the fields needed with `jq -e '<filter>' "<body-file>"`
+(skip it for an operation that returns no body, such as `204`). Before reporting
+the write as done, read the new state back with the matching read named in
+SKILL.md.
+
+The write examples below use `| jq` only to show the shape of the response;
+send them in the form above, with their method, path and body. Free text taken from responses, web pages or other external sources
+(names, descriptions, URLs) goes into the body through a file, not pasted into
+the command: `jq -n --rawfile v "<text-file>" '($v | sub("\r?\n$"; "")) as $v | <filter>' > "<body-file>"`
+builds the body (dropping the file's trailing LF or CRLF), and
+`--data-binary @"<body-file>"` sends it. A value with quotes or backslashes
+also breaks a JSON literal in `-d '…'`: build such a body with jq
+(`--arg <name> '<value>'`) instead of pasting the value into the JSON.
 
 ## Health
 
@@ -44,7 +62,7 @@ curl -s "https://daikin.msageha.net/api/status" | jq '{
 }'
 ```
 
-## Power ON/OFF (purpose-built, no confirmation needed)
+## Power ON/OFF (purpose-built; when asked, no further confirmation)
 
 ```bash
 # Turn on
@@ -58,7 +76,7 @@ curl -s -X POST "https://daikin.msageha.net/api/power" \
   -d '{"on": false}' | jq .
 ```
 
-## Humidify + purify / purify only (purpose-built, no confirmation needed)
+## Humidify + purify / purify only (purpose-built; when asked, no further confirmation)
 
 ```bash
 # Humidify + purify
@@ -72,7 +90,7 @@ curl -s -X POST "https://daikin.msageha.net/api/humidify" \
   -d '{"on": false}' | jq .
 ```
 
-## Course (purpose-built, no confirmation needed)
+## Course (purpose-built; when asked, no further confirmation)
 
 Values: `smart` `manual` `auto_fan` `econo` `pollen` `moist` `circulator`
 (MCK706A; `moist` only while humidifying). A course the unit can't select
@@ -90,7 +108,7 @@ curl -s -X POST "https://daikin.msageha.net/api/course" \
   -d '{"course": "manual"}' | jq .
 ```
 
-## Fan Speed (purpose-built, no confirmation needed)
+## Fan Speed (purpose-built; when asked, no further confirmation)
 
 Values: `quiet` `low` `standard` `turbo` (MCK706A has no `high`). Only affects
 the airflow while `course` is `manual`.
@@ -101,7 +119,7 @@ curl -s -X POST "https://daikin.msageha.net/api/fan-speed" \
   -d '{"fan_speed": "turbo"}' | jq .
 ```
 
-## Humidity Setting (purpose-built, no confirmation needed)
+## Humidity Setting (purpose-built; when asked, no further confirmation)
 
 Values: `low` `standard` `high` (MCK706A). Applies to the humidify-side
 course; 409 while that course is `smart` / `moist` (automatic).
@@ -143,10 +161,11 @@ curl -s "https://daikin.msageha.net/api/info" | jq '{name, firmware, wlan_ssid, 
 curl -s "https://daikin.msageha.net/api/tree" | jq .
 
 # Watch which properties change over time (identify unmapped sensors)
-curl -s "https://daikin.msageha.net/api/tree" | jq 'with_entries(.value = .value.value)' > /tmp/tree1.json
+d=$(mktemp -d) || exit 1; trap 'rm -f "$d"/tree1.json "$d"/tree2.json; rmdir "$d"' EXIT
+curl -s "https://daikin.msageha.net/api/tree" | jq 'with_entries(.value = .value.value)' > "$d/tree1.json"
 sleep 30
-curl -s "https://daikin.msageha.net/api/tree" | jq 'with_entries(.value = .value.value)' > /tmp/tree2.json
-diff <(jq -S . /tmp/tree1.json) <(jq -S . /tmp/tree2.json)
+curl -s "https://daikin.msageha.net/api/tree" | jq 'with_entries(.value = .value.value)' > "$d/tree2.json"
+diff <(jq -S . "$d/tree1.json") <(jq -S . "$d/tree2.json")
 ```
 
 ## Raw dsiot Read (safe)
@@ -168,11 +187,12 @@ Prefer `/power`, `/humidify`, `/course`, `/fan-speed`, `/humidity-setting`
 when they cover the need. `pv` is a little-endian even-length hex string.
 Read the property first (`GET /tree` for `dgc_status`, `POST /read` for other
 containers — go on only if the target's `rsc` is `200x` and the property
-exists) and note its `pv`; keep the new value within the bounds (`min`..`max`
-in `/tree`, `md.mi`..`md.mx` in `/read`; for enum-like properties that upper
-bound is a bitmask of supported values — an undecodable value breaks
-`/status` with 502 until restored). Read back afterwards, and
-restore the original when probing.
+exists) and note its `pv`; write only a supported value — within `min`..`max`
+in `/tree` (`md.mi`..`md.mx` in `/read`) for a numeric property, and for an
+enum-like one a value n whose bit is set in `max` / `md.mx`, which is then a
+bitmask (bit n = value n), not an upper bound. An undecodable value breaks
+`/status` with 502 until restored. Read back afterwards. Write only a change
+the user asked for; explore unknown properties with reads.
 
 ```bash
 set -o pipefail
@@ -181,12 +201,12 @@ curl -sf "https://daikin.msageha.net/api/tree" | jq -e '."e_1002/e_A002/p_01".pv
   || { echo "property not found"; exit 1; }
 
 # Equivalent of power off via raw write, then read back and compare with the value sent
-curl -sf -X POST "https://daikin.msageha.net/api/write" \
+code=$(curl -sS -o /dev/null -w '%{http_code}' -X POST "https://daikin.msageha.net/api/write" \
   -H "Content-Type: application/json" \
   -d '{"to": "/dsiot/edge/adr_0100.dgc_status",
        "entity_path": ["e_1002", "e_A002", "p_01"],
-       "pv": "00", "confirm": true}' >/dev/null \
-  || { echo "write failed — re-read the property before retrying"; exit 1; }
+       "pv": "00", "confirm": true}') && [ "$code" = 200 ] \
+  || { echo "write failed (HTTP ${code:-none}) — re-read the property before retrying"; exit 1; }
 curl -sf "https://daikin.msageha.net/api/tree" | jq -e '."e_1002/e_A002/p_01".pv == "00"' >/dev/null \
   || { echo "read-back doesn't show the new value"; exit 1; }
 ```

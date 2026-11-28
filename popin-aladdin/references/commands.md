@@ -5,11 +5,29 @@ request/response schemas, see [api-reference.md](api-reference.md): how to look
 them up in the server's OpenAPI document, and what the document leaves out. Base URL: `https://popin-aladdin.msageha.net/api`.
 Run requests sequentially — the server serializes them behind one device session.
 
-The examples use `curl -s` for brevity, which exits 0 on an HTTP error, and pipe
-to `jq`, which turns an error body into `null`s. Before reporting a write as
-done or trusting a filtered result, check that curl exited 0 (with
-`set -o pipefail` when piping) and that the status from `-w '%{http_code}'`
-(body saved with `-o <file>`) is the one the operation returns on success.
+Most examples use `curl -s … | jq` for brevity, which shows the body but not
+whether the request succeeded (see the success check in SKILL.md). Send a write
+with the body saved to a file and the status printed, using the operation's
+method and body:
+
+```bash
+curl -sS -o "<body-file>" -w '%{http_code}\n' -X POST "<url>" -H "Content-Type: application/json" -d '<body>'
+```
+
+Go on only when curl exited 0 and the printed status is the one the operation
+returns on success, then read the fields needed with `jq -e '<filter>' "<body-file>"`
+(skip it for an operation that returns no body, such as `204`). Before reporting
+the write as done, read the new state back with the matching read named in
+SKILL.md.
+
+The write examples below use `| jq` only to show the shape of the response;
+send them in the form above, with their method, path and body. Free text taken from responses, web pages or other external sources
+(names, descriptions, URLs) goes into the body through a file, not pasted into
+the command: `jq -n --rawfile v "<text-file>" '($v | sub("\r?\n$"; "")) as $v | <filter>' > "<body-file>"`
+builds the body (dropping the file's trailing LF or CRLF), and
+`--data-binary @"<body-file>"` sends it. A value with quotes or backslashes
+also breaks a JSON literal in `-d '…'`: build such a body with jq
+(`--arg <name> '<value>'`) instead of pasting the value into the JSON.
 
 ## Health / Device Info
 
@@ -62,11 +80,11 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/light" \
 ## Playback Status
 
 ```bash
-curl -s "https://popin-aladdin.msageha.net/api/status" | jq .
+curl -s "https://popin-aladdin.msageha.net/api/status" | jq 'del(.. | objects | .current_uri?, .current_uri_metadata?, .track_uri?, .track_metadata?)'   # URIs can carry tokens
 
 # Position and media details
-curl -s "https://popin-aladdin.msageha.net/api/position" | jq .
-curl -s "https://popin-aladdin.msageha.net/api/media" | jq .
+curl -s "https://popin-aladdin.msageha.net/api/position" | jq 'del(.. | objects | .current_uri?, .current_uri_metadata?, .track_uri?, .track_metadata?)'
+curl -s "https://popin-aladdin.msageha.net/api/media" | jq 'del(.. | objects | .current_uri?, .current_uri_metadata?, .track_uri?, .track_metadata?)'
 
 # Transport state / supported protocols
 curl -s "https://popin-aladdin.msageha.net/api/transport" | jq .
@@ -89,7 +107,7 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/mute" \
 ## Playback Control
 
 Stopping active playback (or skipping away from it) is visible in the room —
-confirm with the user first if something is playing.
+unless the user asked for it, confirm first if something is playing.
 
 ```bash
 curl -s -X POST "https://popin-aladdin.msageha.net/api/play" | jq .
@@ -120,14 +138,14 @@ resending.
 # Video (autoplay)
 curl -s -X POST "https://popin-aladdin.msageha.net/api/cast" \
   -H "Content-Type: application/json" \
-  -d '{"uri": "http://192.168.1.50:8200/video/sample.mp4",
-       "upnp_class": "object.item.videoItem"}' | jq .
+  -d '{"uri": "<video-url>",
+       "upnp_class": "object.item.videoItem"}' | jq '{autoplay}'   # the response echoes the URI
 
 # Image
 curl -s -X POST "https://popin-aladdin.msageha.net/api/cast" \
   -H "Content-Type: application/json" \
-  -d '{"uri": "http://192.168.1.50:8200/photo.jpg",
-       "upnp_class": "object.item.imageItem"}' | jq .
+  -d '{"uri": "<image-url>",
+       "upnp_class": "object.item.imageItem"}' | jq '{autoplay}'
 ```
 
 ## Launch Apps (deeplink / shortcut keys)
@@ -135,9 +153,9 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/cast" \
 ```bash
 # Open a URL / app scheme on the device
 curl -s -X POST "https://popin-aladdin.msageha.net/api/deeplink" \
-  -H "Content-Type: application/json" -d '{"url": "https://www.youtube.com/tv"}' | jq .
+  -H "Content-Type: application/json" -d '{"url": "https://www.youtube.com/tv"}' -o /dev/null -w '%{http_code}\n'   # the response echoes the URL
 curl -s -X POST "https://popin-aladdin.msageha.net/api/deeplink" \
-  -H "Content-Type: application/json" -d '{"url": "tver://"}' | jq .
+  -H "Content-Type: application/json" -d '{"url": "tver://"}' -o /dev/null -w '%{http_code}\n'
 
 # Remote shortcut keys
 curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
@@ -176,13 +194,14 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
 ## Text / Voice Input
 
 ```bash
-# Type into the focused on-screen input (focus it with /key first)
+# Type into the focused on-screen input (focus it with /key first). The response echoes
+# the text; for a secret the user handed over, see SKILL.md
 curl -s -X POST "https://popin-aladdin.msageha.net/api/keyboard" \
-  -H "Content-Type: application/json" -d '{"text": "hello world"}' | jq .
+  -H "Content-Type: application/json" -d '{"text": "<text>"}' -o /dev/null -w '%{http_code}\n'
 
 # Voice command as text
 curl -s -X POST "https://popin-aladdin.msageha.net/api/voice" \
-  -H "Content-Type: application/json" -d '{"text": "天気を教えて"}' | jq .
+  -H "Content-Type: application/json" -d '{"text": "<voice-command>"}' -o /dev/null -w '%{http_code}\n'
 ```
 
 ## Maintenance / Power
@@ -194,7 +213,7 @@ curl -s -X POST "https://popin-aladdin.msageha.net/api/memory/free" | jq .
 # Photo memory (on-device album) and light-unit firmware
 curl -s "https://popin-aladdin.msageha.net/api/remote/album" | jq '{count, free_space, light_version}'
 
-# Power off — irreversible from this API, confirm with the user first
+# Power off — this API can't turn it back on; confirm with the user first
 curl -s -X POST "https://popin-aladdin.msageha.net/api/power/off" \
   -H "Content-Type: application/json" -d '{"confirm": true}' | jq .
 ```

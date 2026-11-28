@@ -23,7 +23,7 @@ up one operation instead of reading the whole document:
 ```bash
 # List operations. Paths in the document start with /api, the Base URL's path
 curl -sf "https://popin-aladdin.msageha.net/openapi.json" | jq -er '.paths | to_entries[]
-  | .key as $p | .value | to_entries[] | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
+  | .key as $p | .value | to_entries[] | select(.value | type == "object") | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
 
 # One operation with its $refs inlined (<skill-dir>: the directory of this skill's SKILL.md)
 curl -sf "https://popin-aladdin.msageha.net/openapi.json" | jq -e -f "<skill-dir>/scripts/openapi-operation.jq" --arg method post --arg path /api/cast
@@ -97,8 +97,8 @@ the projector to free memory by closing background apps) →
 
 ## Playback and casting
 
-- `/stop`, `/next` and `/previous` change DLNA playback — confirm with the user
-  first if something is playing. They don't affect apps such as YouTube.
+- `/stop`, `/next` and `/previous` change DLNA playback — unless the user asked
+  for it, confirm first if something is playing. They don't affect apps such as YouTube.
 - `POST /cast` needs a media URL reachable from the device's LAN. It replaces
   the current DLNA media even with `autoplay: false` — if something is being
   watched (or you can't tell), confirm with the user first. The URI is set
@@ -108,10 +108,9 @@ the projector to free memory by closing background apps) →
 ## POST /power/off
 
 Powers the projector down. Irreversible from this API — it cannot turn the
-unit back on. Confirm with the user first. The body is required (none →
-422). Send the JSON `true` for `confirm`; omitted or false-like (`false`,
-`"off"`, …) → 400. The API also coerces true-like strings (`"yes"`, `"TRUE"`,
-`1`), so never pass an unchecked value. The command is sent over UDP; a 200
+unit back on. Confirm with the user first, saying it can't be undone here. The body is required (none →
+422). Send the JSON `true` for `confirm`: `false` or an omitted `confirm` →
+400, and anything that isn't a JSON boolean (`"true"`, `1`) → 422. The command is sent over UDP; a 200
 doesn't prove the unit received it.
 
 ## POST /soap
@@ -128,3 +127,6 @@ Read-only (no `confirm` needed): `GetTransportInfo`, `GetPositionInfo`,
 `GetMute`, `ListPresets`, `GetProtocolInfo`, `GetCurrentConnectionIDs`,
 `GetCurrentConnectionInfo`. The response is `{"service", "action",
 "result"}` with the SOAP response's out-arguments in `result`.
+`GetMediaInfo` / `GetPositionInfo` include `CurrentURI`, `CurrentURIMetaData`,
+`NextURI`, `NextURIMetaData`, `TrackURI` and `TrackMetaData`, which can carry tokens:
+drop them when printing.

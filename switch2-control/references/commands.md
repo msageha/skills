@@ -11,7 +11,7 @@ curl -s http://172.16.1.108:8765/status
 
 ## 再接続
 
-`connected: false` のときに送る。
+接続の復旧を頼まれたときか、頼まれた入力を送るのに要るときに、`connected: false` なら送る。
 
 ```bash
 curl -s -X POST http://172.16.1.108:8765/reconnect

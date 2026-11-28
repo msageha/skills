@@ -19,7 +19,7 @@ instead of reading the whole document:
 ```bash
 # Find operations whose path or summary contains a word, e.g. "split", "watermark"
 curl -sf "https://pdf-tools.msageha.net/v1/api-docs" | jq -er --arg q "<keyword>" '.paths | to_entries[]
-  | .key as $p | .value | to_entries[] | select(($p + " " + (.value.summary // "")) | ascii_downcase | contains($q | ascii_downcase))
+  | .key as $p | .value | to_entries[] | select(.value | type == "object") | select(($p + " " + (.value.summary // "")) | ascii_downcase | contains($q | ascii_downcase))
   | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
 
 # One operation with its $refs inlined (<skill-dir>: the directory of this skill's SKILL.md).
@@ -90,7 +90,7 @@ Metadata
   `/PieceInfo`; XMP attached to pages or images remains, so don't report the
   file as metadata-free from this alone.
 
-Passwords (confirm with the user before adding or removing protection)
+Passwords (the user supplies them through a file; see SKILL.md)
 
 - `POST /security/add-password`: each `prevent*` you omit is allowed. When
   protecting an unencrypted PDF, the restrictions hold only with a non-empty

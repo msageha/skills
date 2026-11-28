@@ -22,7 +22,7 @@ operation instead of reading the whole document:
 ```bash
 # List operations. Paths in the document start with /api, the Base URL's path
 curl -sf "https://daikin.msageha.net/openapi.json" | jq -er '.paths | to_entries[]
-  | .key as $p | .value | to_entries[] | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
+  | .key as $p | .value | to_entries[] | select(.value | type == "object") | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
 
 # One operation with its $refs inlined (<skill-dir>: the directory of this skill's SKILL.md)
 curl -sf "https://daikin.msageha.net/openapi.json" | jq -e -f "<skill-dir>/scripts/openapi-operation.jq" --arg method get --arg path /api/status
@@ -153,11 +153,12 @@ they cover the need. `confirm` must be the JSON `true` (`1` or `"true"` →
 422).
 
 The unit stores values outside its supported set as-is. Before writing, read
-the property — `GET /tree` for `dgc_status` (bounds in `min` / `max`),
+the property — `GET /tree` for `dgc_status` (`min` / `max`),
 `POST /read` for other containers (`md.mi` / `md.mx`) — note its current
-value, and write only a value within the bounds (for enum-like properties,
-the upper bound is a bitmask: only values whose bit is set are supported).
-Read back afterwards, and restore the original when probing. A value
+value, and write only a supported value: within the bounds for a numeric
+property; for an enum-like one, a value n whose bit is set in `max` /
+`md.mx` (a bitmask, not an upper bound).
+Read back afterwards. To find out what a property does, read it (`/tree`, `/read`) instead of writing to it. A value
 `/status` can't decode (e.g. `01` to the changeover property, or a course
 index ≥ 11) leaves `GET /status` returning 502 until a supported value is
 restored — with the setter that writes that property where one does
