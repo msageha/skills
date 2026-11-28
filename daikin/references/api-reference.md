@@ -146,10 +146,10 @@ Raw write to one dsiot property; `to` is a container address: same rules as
 `/read`, and its last segment must contain a `.` (e.g.
 `/dsiot/edge/adr_0100.dgc_status`; `/dsiot/edge` → 422). The response is `{"written": {to, entity_path, pv}, "result": <dsiot
 response>}` — `written` echoes the request, `result` is the unit's answer.
-**Destructive — can change arbitrary unit
+Destructive — can change arbitrary unit
 settings. Confirm with the user first and prefer the purpose-built endpoints
 (`/power`, `/humidify`, `/course`, `/fan-speed`, `/humidity-setting`) when
-they cover the need.** `confirm` must be the JSON `true` (`1` or `"true"` →
+they cover the need. `confirm` must be the JSON `true` (`1` or `"true"` →
 422).
 
 The unit stores values outside its supported set as-is. Before writing, read

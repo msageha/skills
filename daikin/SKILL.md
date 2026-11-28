@@ -42,20 +42,30 @@ means one of these, not an API error.
   read `GET /status` first.
 - `POST /write` is a raw dsiot property write (`confirm: true` required,
   otherwise 422) and can change arbitrary unit settings — confirm with the
-  user and prefer the purpose-built endpoints. The unit stores out-of-range
-  values as-is; one `/status` can't decode makes it return 502 until the
-  property is restored. Before writing, read the property (`GET /tree` for
-  `dgc_status`, `POST /read` for other containers), note its `pv`, keep the
-  new value within the bounds (`min`..`max` in `/tree`, `md.mi`..`md.mx` in
-  `/read`; for enum-like ones a value whose bit is set in that upper bound, a bitmask),
-  read back after, and restore the original when probing.
-  `POST /read` and `GET /tree` are read-only and safe; `POST /read` returns
+  user and prefer the purpose-built endpoints.
+- The unit stores out-of-range values as-is; one `/status` can't decode makes
+  it return 502 until the property is restored. So before `POST /write`, read
+  the property (`GET /tree` for `dgc_status`, `POST /read` for other
+  containers) and note its `pv`.
+- Keep the written value within the property's bounds: `min`..`max` in
+  `/tree`, `md.mi`..`md.mx` in `/read`. For enum-like properties the upper
+  bound is a bitmask of the supported values: write a value whose bit is set
+  in it, not the mask itself.
+- After `POST /write`, read the property back; when probing, restore the
+  original `pv` afterwards.
+- `POST /read` and `GET /tree` are read-only and safe; `POST /read` returns
   per-address dsiot errors inside a 200, so check each `rsc`.
 - After `POST /course` while purifying only, wait until the humidify side
   has synced (a few seconds; check `e_1002/e_3007/p_03` in `GET /tree`, since
   `/status.course` shows the purify side then) before
   `POST /humidity-setting`; otherwise it writes to the previous course or
   returns 409.
+- Treat a request as successful only when curl exits 0 and the HTTP status
+  is the one the operation returns on success; `| jq` output proves neither
+  (without `set -o pipefail`, `curl … | jq` exits with jq's status, and
+  `curl -f` lets a `3xx` through). Save the body with `-o <file>`, read the
+  status with `-w '%{http_code}'`, and process the body only after both
+  checks pass.
 - Errors: `409` unsupported value / not selectable in the current state,
   `422` request validation (including a missing `confirm`), `502` unit
   returned an error or an undecodable value (`detail` + dsiot `rsc`; `200x`

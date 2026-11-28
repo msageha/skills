@@ -276,6 +276,8 @@ List all domains. Optional path segments for filtering: `/domains`,
 #### POST /domains/{type}/{kind}
 
 Add a domain. Both `{type}` (`allow`/`deny`) and `{kind}` (`exact`/`regex`) required.
+Confirm with the user first; this and the `PUT` / `DELETE` below change DNS
+filtering for every client.
 
 | Field   | Type               | Required | Description                                   |
 | ------- | ------------------ | -------- | --------------------------------------------- |
@@ -305,7 +307,7 @@ Batch variant: `POST /domains:batchDelete` with body `[{item, type, kind}, ...]`
 | max_devices   | integer | Max devices to return (default: 10)   |
 | max_addresses | integer | Max addresses per device (default: 3) |
 
-**Response item:** the per-IP data lives under **`ips`**; there is no
+**Response item:** the per-IP data lives under `ips`; there is no
 per-device `name` field (only per-IP `name`, usually `null` unless reverse
 DNS resolves it).
 
@@ -379,13 +381,14 @@ Adlists (blocklists/allowlists). `type` (`allow`/`block`) optional on GET
 
 #### POST /lists
 
-**`type` (`allow`/`block`) is a required query parameter**, e.g.
-`POST /lists?type=block`.
+`type` (`allow`/`block`) is a required query parameter, e.g.
+`POST /lists?type=block`. Confirm with the user before adding, updating or
+removing an adlist.
 
 ```json
 {
   "address": "https://example.com/blocklist.txt",
-  "comment": "Added via API",
+  "comment": "<reason>",
   "enabled": true
 }
 ```
@@ -405,6 +408,9 @@ Update or remove an adlist. The `type` query parameter is required on `PUT` and 
 | `POST /action/restartdns`    | Restart the pihole-FTL DNS service: resolution stops briefly and a pending blocking timer is lost, so its scheduled switch never happens                                                                                                                                                                                                                                         |
 | `POST /action/flush/logs`    | Flush DNS logs and purge last 24h from the DB.                                                                                                                                                                                                                                                                                                                                   |
 | `POST /action/flush/network` | Flush the network table (remove all known devices). Replaces the deprecated `flush/arp`.                                                                                                                                                                                                                                                                                         |
+
+Confirm with the user before any of these actions: gravity can take a while,
+`restartdns` interrupts resolution, and the flushes delete data irreversibly.
 
 ---
 

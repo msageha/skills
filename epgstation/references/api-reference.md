@@ -63,6 +63,7 @@ curl -sf "https://epgstation.msageha.net/api/docs" | jq -e -f "<skill-dir>/scrip
   `needsRawExtended`.
 - `POST /reserves` needs either `programId` (from a schedule or search
   result) or `timeSpecifiedOption`; the document marks neither as required.
+  Show the search results and confirm with the user before creating one.
 
 ## Genre IDs (ARIB STD-B10)
 

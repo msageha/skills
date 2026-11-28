@@ -69,6 +69,12 @@ an API error.
   do when asked; confirm first for `/power/off`, stopping or skipping active playback,
   casting over running content (or when you can't tell), and `/soap` actions outside its read-only
   list (`confirm: true` required).
+- Treat a request as successful only when curl exits 0 and the HTTP status
+  is the one the operation returns on success; `| jq` output proves neither
+  (without `set -o pipefail`, `curl … | jq` exits with jq's status, and
+  `curl -f` lets a `3xx` through). Save the body with `-o <file>`, read the
+  status with `-w '%{http_code}'`, and process the body only after both
+  checks pass.
 - Errors: `400` missing or false `confirm` (`/soap` non-read-only actions, `/power/off`), `422`
   body validation (unknown button, volume out of range, …), `502` device
   returned a SOAP fault or an unexpected answer (`detail`; SOAP faults add

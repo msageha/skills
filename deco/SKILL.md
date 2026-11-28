@@ -62,6 +62,12 @@ means one of these, not an API error.
   and re-read the state rather than blindly resending.
 - `POST /reboot` with `macs` omitted, `null` or `[]` reboots every node —
   when targeting specific nodes and the MAC lookup comes back empty, stop.
+- Treat a request as successful only when curl exits 0 and the HTTP status
+  is the one the operation returns on success; `| jq` output proves neither
+  (without `set -o pipefail`, `curl … | jq` exits with jq's status, and
+  `curl -f` lets a `3xx` through). Save the body with `-o <file>`, read the
+  status with `-w '%{http_code}'`, and process the body only after both
+  checks pass.
 - Errors: `400` `confirm: false`, `401` router auth failure (a rejected TMP
   login persists until the server restarts with fixed credentials), `404` nothing
   to reboot / no guest band to toggle, `413` `params` too large for one TMP

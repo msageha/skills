@@ -5,9 +5,9 @@ Ready-to-run `curl` examples for the endpoints listed in
 
 The examples use `curl -s` for brevity, which exits 0 on an HTTP error, and pipe
 to `jq`, which turns an error body into `null`s. Before reporting a write as
-done or trusting a filtered result, check the request: run with
-`set -o pipefail` and `curl -sf`, or save the body with `-o <file>` and read
-the status from `-w '%{http_code}'`.
+done or trusting a filtered result, check that curl exited 0 (with
+`set -o pipefail` when piping) and that the status from `-w '%{http_code}'`
+(body saved with `-o <file>`) is the one the operation returns on success.
 
 ## Status Summary
 
@@ -28,6 +28,8 @@ curl -s "https://pihole.msageha.net/api/dns/blocking" | jq '{blocking, timer}'
 ```
 
 ## Disable Blocking (temporarily)
+
+Warn the user that ads and trackers get through while blocking is off.
 
 ```bash
 # Disable for 60 seconds (re-enables when the timer runs out — unless Pi-hole
@@ -101,24 +103,31 @@ curl -s "https://pihole.msageha.net/api/search/example.com" | jq '{
 
 ## Allow / Deny a Domain
 
+Confirm with the user before adding or removing an entry. Exact and regex
+allow rules are synced from the local-home-services repository, so an allow
+rule added or removed here is undone at the next sync — tell the user (deny
+rules aren't synced).
+
 ```bash
 # Allow (whitelist)
 curl -s -X POST "https://pihole.msageha.net/api/domains/allow/exact" \
   -H "Content-Type: application/json" \
-  -d '{"domain": "example.com", "comment": "Allowed via Discord"}' | jq .
+  -d '{"domain": "example.com", "comment": "<reason>"}' | jq .
 
 # Deny (blacklist)
 curl -s -X POST "https://pihole.msageha.net/api/domains/deny/exact" \
   -H "Content-Type: application/json" \
-  -d '{"domain": "example.com", "comment": "Blocked via Discord"}' | jq .
+  -d '{"domain": "example.com", "comment": "<reason>"}' | jq .
 
 # Deny with regex
 curl -s -X POST "https://pihole.msageha.net/api/domains/deny/regex" \
   -H "Content-Type: application/json" \
-  -d '{"domain": "(.*)ads\\.example\\.com$", "comment": "Regex block via Discord"}' | jq .
+  -d '{"domain": "(.*)ads\\.example\\.com$", "comment": "<reason>"}' | jq .
 ```
 
 ## Remove / List Domains
+
+Removing an entry needs the user's confirmation, as above.
 
 ```bash
 # Remove from exact allowlist / denylist (204 = removed)
@@ -150,6 +159,9 @@ curl -s "https://pihole.msageha.net/api/info/version" | jq .
 ```
 
 ## Gravity / DNS Actions
+
+Confirm with the user before running a gravity update: it re-downloads every
+list and can take a while.
 
 ```bash
 # Update Gravity (blocklists) — streams output, may take a while
@@ -190,6 +202,11 @@ curl -s -X POST "https://pihole.msageha.net/api/action/restartdns" | jq .
 
 ## Adlists
 
+Confirm with the user before adding, changing or removing an adlist. Block
+adlists are synced from the local-home-services repository, so a block adlist
+added or removed here is undone at the next sync — tell the user (allow
+adlists aren't synced).
+
 ```bash
 # List all adlists
 curl -s "https://pihole.msageha.net/api/lists" | jq '.lists[] | {address, enabled, comment, number}'
@@ -197,5 +214,5 @@ curl -s "https://pihole.msageha.net/api/lists" | jq '.lists[] | {address, enable
 # Add new adlist (type is required)
 curl -s -X POST "https://pihole.msageha.net/api/lists?type=block" \
   -H "Content-Type: application/json" \
-  -d '{"address": "https://example.com/blocklist.txt", "comment": "Added via Discord"}' | jq .
+  -d '{"address": "https://example.com/blocklist.txt", "comment": "<reason>"}' | jq .
 ```

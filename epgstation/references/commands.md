@@ -6,9 +6,9 @@ them up in the server's OpenAPI document, and what the document leaves out. Base
 
 The examples use `curl -s` for brevity, which exits 0 on an HTTP error, and pipe
 to `jq`, which turns an error body into `null`s. Before reporting a write as
-done or trusting a filtered result, check the request: run with
-`set -o pipefail` and `curl -sf`, or save the body with `-o <file>` and read
-the status from `-w '%{http_code}'`.
+done or trusting a filtered result, check that curl exited 0 (with
+`set -o pipefail` when piping) and that the status from `-w '%{http_code}'`
+(body saved with `-o <file>`) is the one the operation returns on success.
 
 ## Currently Broadcasting
 
@@ -55,7 +55,9 @@ curl -s -X POST "https://epgstation.msageha.net/api/schedules/search" \
 
 ## Reserve (by Program ID)
 
-Confirm with the user before creating a reservation (also by time, below).
+Find the program with Search Programs (above) and show the candidates to the
+user first; take `PROGRAM_ID` from the one they choose. Confirm with the user
+before creating a reservation (also by time, below).
 
 ```bash
 curl -s -X POST "https://epgstation.msageha.net/api/reserves" \

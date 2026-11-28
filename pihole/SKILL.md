@@ -27,10 +27,11 @@ the caller isn't on that list, not an API error. Pi-hole itself answers `401`
   a negative value, `null` or no `timer` means no timer (indefinite); check
   the `timer` in the response. The timer doesn't survive a Pi-hole restart
   (blocking then stays off), so re-check the state if one happened.
-- Confirm with the user before modifying allow/deny lists, adding adlists,
-  running a gravity update (it can take a while), or restarting DNS
+- Confirm with the user before modifying allow/deny lists or adlists,
+  running a gravity update (it can take a while), restarting DNS
   (`POST /action/restartdns` interrupts resolution and drops a pending
-  blocking timer).
+  blocking timer), or flushing the logs or the network table
+  (`POST /action/flush/*`, irreversible).
 - The set of block adlists and exact / regex allow rules is synced from files
   in the local-home-services repository (`dns-server/config/adlists.list`,
   `whitelist.txt`, `whitelist-regex.txt`) at startup and monthly: after the
@@ -41,9 +42,13 @@ the caller isn't on that list, not an API error. Pi-hole itself answers `401`
   month). For these synced entries, API changes are temporary — tell the
   user; lasting ones need the files changed. Deny rules and allow adlists
   aren't synced, so API changes to them last.
-- Judge success by curl's exit code and the HTTP status (`curl -sf`, or
-  `-o <file> -w '%{http_code}'`), not by `| jq` output: a failed request still exits 0
-  through the pipe. Adding several domains in one `POST /domains/…` returns
+- Treat a request as successful only when curl exits 0 and the HTTP status
+  is the one the operation returns on success; `| jq` output proves neither
+  (without `set -o pipefail`, `curl … | jq` exits with jq's status, and
+  `curl -f` lets a `3xx` through). Save the body with `-o <file>`, read the
+  status with `-w '%{http_code}'`, and process the body only after both
+  checks pass.
+  Adding several domains in one `POST /domains/…` returns
   `201` even if some fail — check `processed.errors`. A gravity
   update reports failure as `Gravity failed` at the end of a 200 body
   (`409` = another run in progress).
@@ -68,6 +73,6 @@ the caller isn't on that list, not an API error. Pi-hole itself answers `401`
 | Update gravity / restart DNS | `POST /action/gravity`, `POST /action/restartdns`        |
 | Version / system info        | `GET /info/version`, `GET /info/system`                  |
 
-Full request/response schemas and ready-to-run curl examples: see
-[references/api-reference.md](references/api-reference.md) and
-[references/commands.md](references/commands.md).
+Authentication, and each endpoint's parameters, request/response schemas and behaviour: see
+[references/api-reference.md](references/api-reference.md). Ready-to-run curl
+examples: [references/commands.md](references/commands.md).

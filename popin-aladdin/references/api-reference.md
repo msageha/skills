@@ -107,8 +107,8 @@ the projector to free memory by closing background apps) →
 
 ## POST /power/off
 
-Powers the projector down. **Irreversible from this API — it cannot turn the
-unit back on. Confirm with the user first.** The body is required (none →
+Powers the projector down. Irreversible from this API — it cannot turn the
+unit back on. Confirm with the user first. The body is required (none →
 422). Send the JSON `true` for `confirm`; omitted or false-like (`false`,
 `"off"`, …) → 400. The API also coerces true-like strings (`"yes"`, `"TRUE"`,
 `1`), so never pass an unchecked value. The command is sent over UDP; a 200
@@ -119,7 +119,7 @@ doesn't prove the unit received it.
 Raw UPnP SOAP passthrough to `AVTransport` / `RenderingControl` /
 `ConnectionManager` (most actions need `"InstanceID": 0` in `args`). Only the
 actions below are read-only; any other action (Play / Set* / an unlisted Get*)
-**requires `confirm: true`** and can change device state — confirm with the
+requires `confirm: true` and can change device state — confirm with the
 user before sending one, and prefer the typed endpoints.
 
 Read-only (no `confirm` needed): `GetTransportInfo`, `GetPositionInfo`,

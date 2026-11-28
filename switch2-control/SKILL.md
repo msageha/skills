@@ -1,7 +1,7 @@
 ---
 name: switch2-control
 description: "Nintendo Switch 2 を LAN 上の HTTP API 経由で Pro Controller として操作する。ボタン入力・スティック・マクロ実行・接続管理。Switch 2 / ゲーム機の操作依頼で使用。"
-allowed-tools: Bash
+allowed-tools: Bash(curl:*)
 metadata:
   openclaw:
     emoji: "🎮"
@@ -14,73 +14,34 @@ metadata:
 
 LAN 内の Raspberry Pi 上で稼働する nsbt HTTP API を通じて、Nintendo Switch 2 に Pro Controller の入力を送る。
 
-```
-ベース URL: http://172.16.1.108:8765
-```
+Base URL: `http://172.16.1.108:8765` (認証ヘッダーは不要)。
 
-> 詳細な API 仕様・マクロ構文・トラブルシューティングは [references/api-reference.md](references/api-reference.md) を参照。
+## 要点
 
-## 必須フロー: 操作前の接続確認
-
-入力を送る前に**必ず**接続状態を確認する:
-
-```bash
-curl -s http://172.16.1.108:8765/status
-# => {"controller": "connected", "connected": true, ...}
-```
-
-- `connected: true` → 操作可能
-- `connected: false` → 「接続管理」セクションの手順で復旧してから操作する
-- 注意: `detail` フィールドは直近の操作説明が残るだけ。**接続状態の正は `connected` フィールド**
+- 入力を送る前に `GET /status` で接続を確かめる。入力系は未接続でも `202` を返し、入力は黙って捨てられる (`/status` の `detail` に `not connected` が残る) ため。
+- 接続状態は `connected` で判定する。`detail` には直近の操作の説明が残るだけで、今の状態を表さない。
+- `connected: false` なら `POST /reconnect` し、15〜60 秒おいて `/status` を確かめる (サーバー側も 60 秒間隔で自動再接続する)。再接続できるのは、Switch 2 が起動中 (スリープでない) で、「持ちかた/順番を変える」画面を開いていないときだけ (ホーム画面なら可)。
+- 復旧しなければ api-reference のトラブルシューティングに従う。再ペアリングが要る場合は人間に依頼する。
+- 入力系の `202 {"queued": ...}` はキューに入れたことだけを示し、実行の完了も Switch への到達も保証しない。この API には入力の効果を観測する手段が無いので、報告では「`202` で受け付けられた」と送信前の `connected` を伝え、「効いた」とは言わない。
+- `home` (マクロ内では `HOME`) はゲームを中断してホーム画面に戻すので、ユーザーが指示したときだけ送る。
+- `POST /connect` (新規ペアリング) は Switch 2 本体の画面操作が要り、エージェントだけでは完了できない。要るときは人間に依頼する。
+- 0.3 秒より長くスティックを倒すときと、複数の入力を続けて送るときはマクロ (`POST /macro`) を使う。
 
 ## 主要操作
 
-### ボタンを押す(0.1 秒押下)
-
-```bash
-curl -s http://172.16.1.108:8765/press/a        # A ボタン
-curl -s http://172.16.1.108:8765/press/l+r      # L+R 同時押し(+ で連結)
-curl -s http://172.16.1.108:8765/press/zl+zr+a  # 3 つ以上の同時押しも可
-```
-
-### ボタン長押し
-
-```bash
-curl -s http://172.16.1.108:8765/hold/b/2       # B を 2 秒長押し
-curl -s http://172.16.1.108:8765/hold/l+r/1.5   # 同時長押し
-```
-
-### 十字キー
-
-```bash
-curl -s http://172.16.1.108:8765/dpad/up        # up / down / left / right
-```
-
-### スティック(0.3 秒倒す)
-
-```bash
-# /stick/<l|r>/<x>/<y>  x, y は -100〜100(右・上が正)
-curl -s http://172.16.1.108:8765/stick/l/100/0   # 左スティックを右に
-curl -s http://172.16.1.108:8765/stick/r/0/-100  # 右スティックを下に
-```
-
-0.3 秒より長く倒す・連続操作する場合はマクロを使う。
-
-### マクロ(複数入力のシーケンス)
-
-```bash
-# ; が改行に変換される。行 = 「入力 時間」、数値だけの行はウェイト
-curl -s -X POST http://172.16.1.108:8765/macro \
-  -d 'L_STICK@+100+000 1.0s;A B 0.1s;0.5s;ZL ZR 0.3s'
-
-# LOOP / HOLD などインデントが必要な構文は改行入りで送る
-curl -s -X POST http://172.16.1.108:8765/macro \
-  --data-binary $'LOOP 3\n\tA 0.1s\n\t0.3s'
-```
-
-構文の詳細(LOOP / HOLD / スティック表記)は [references/api-reference.md](references/api-reference.md) 参照。
+| 操作                                                    | Endpoint                            |
+| ------------------------------------------------------- | ----------------------------------- |
+| 接続状態                                                | `GET /status`                       |
+| ボタンを 0.1 秒押す (`+` で同時押し、3 つ以上も可)      | `GET /press/<btns>`                 |
+| ボタンを指定秒数押し続ける                              | `GET /hold/<btns>/<secs>`           |
+| 十字キー                                                | `GET /dpad/<up\|down\|left\|right>` |
+| スティックを 0.3 秒倒す (x, y は -100〜100、右・上が正) | `GET /stick/<l\|r>/<x>/<y>`         |
+| マクロ (複数入力のシーケンス)                           | `POST /macro`                       |
+| 登録済みの Switch へ再接続                              | `POST /reconnect`                   |
 
 ## ボタン名一覧
+
+URL の `<btns>` で使う名前。マクロ内では大文字の別表記を使う (api-reference の「マクロ構文」)。
 
 | 入力名                                    | 意味               |
 | ----------------------------------------- | ------------------ |
@@ -91,24 +52,4 @@ curl -s -X POST http://172.16.1.108:8765/macro \
 | `l3` / `r3`                               | スティック押し込み |
 | `up` `down` `left` `right`                | 十字キー           |
 
-## 接続管理
-
-`connected: false` のときの復旧手順:
-
-```bash
-# 1. 再接続を要求
-curl -s -X POST http://172.16.1.108:8765/reconnect
-
-# 2. 数秒〜60 秒待って確認(サーバー側にも 60 秒間隔の自動再接続あり)
-sleep 15 && curl -s http://172.16.1.108:8765/status
-```
-
-- Switch 2 本体が**起動中(スリープでない)**ことが再接続の条件
-- Switch 2 が「持ちかた/順番を変える」画面のままだと再接続できない(ホーム画面なら OK)
-- 復旧しない場合は [references/api-reference.md](references/api-reference.md) のトラブルシューティングを参照。再ペアリングが必要なケースは**人間にエスカレーション**する
-
-## 注意事項
-
-- 入力系 API のレスポンス `202 {"queued": ...}` は**キュー投入**を意味するだけで、実行完了・Switch への到達を保証しない。未接続時は入力が黙って捨てられる(`/status` の `detail` に `not connected` が記録される)
-- `home` はゲームを中断してホーム画面に戻る副作用がある。ユーザーの指示なしに送らない
-- `POST /connect`(新規ペアリング)は Switch 2 本体の画面操作が必要なため、エージェント単独では完了できない。必要時は人間に依頼する
+エンドポイントの完全な仕様・マクロ構文 (LOOP / HOLD / スティック表記)・トラブルシューティングは [references/api-reference.md](references/api-reference.md)、そのまま実行できる curl の例は [references/commands.md](references/commands.md) にある。

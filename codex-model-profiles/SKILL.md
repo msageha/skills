@@ -43,7 +43,7 @@ codex exec -p "$profile" -s read-only --ignore-rules -C /path/to/project \
   -o "$out/answer.md" - < "$out/prompt.md" > "$out/run.log" 2>&1
 ```
 
-- **実行前に profile の存在を確認し、無ければ止める。** 存在しない名前はエラーにならず、base config の既定モデルで実行される (無言フォールバック)。
+- 実行前に profile の存在を確認し、無ければ止める。存在しない名前はエラーにならず、base config の既定モデルで実行される (無言フォールバック)。
 - プロンプトはファイルに書き、`-` で stdin から読ませる。引数で渡す場合は stdin を `</dev/null` で閉じる。stdin が開いたままだと (バックグラウンド実行など) 追加入力の EOF を待ち続けてセッションが始まらない。
 - `-s read-only` は相談・レビュー向けで、`--ignore-rules` と組み合わせる。`~/.codex/rules/` の allow に一致するコマンド (git commit 等) は read-only でも sandbox の外で実行されるため。編集まで任せるなら `-s workspace-write`。
 - プロンプトと出力先は委譲ごとに分ける。並列に走らせると同じ `prompt.md` / `run.log` / `answer.md` を上書きし合い、読み込み中のプロンプトに後続の指示が混ざる。

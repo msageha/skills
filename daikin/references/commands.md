@@ -7,9 +7,9 @@ Run requests sequentially — the server serializes them behind one unit session
 
 The examples use `curl -s` for brevity, which exits 0 on an HTTP error, and pipe
 to `jq`, which turns an error body into `null`s. Before reporting a write as
-done or trusting a filtered result, check the request: run with
-`set -o pipefail` and `curl -sf`, or save the body with `-o <file>` and read
-the status from `-w '%{http_code}'`.
+done or trusting a filtered result, check that curl exited 0 (with
+`set -o pipefail` when piping) and that the status from `-w '%{http_code}'`
+(body saved with `-o <file>`) is the one the operation returns on success.
 
 ## Health
 
