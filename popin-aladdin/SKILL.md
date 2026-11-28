@@ -54,11 +54,12 @@ an API error.
   `CurrentURIMetaData`, `NextURI`, `NextURIMetaData`, `TrackURI` and
   `TrackMetaData`: drop those too. Don't send
   passwords or other secrets through them unless the user explicitly hands
-  that over; then build the body from the user's file
-  (`jq -n --rawfile t "<secret-file>" '{text: ($t | sub("\r?\n$"; ""))}'`, with
-  `url` for `/deeplink` and `uri` for `/cast`) and
-  send it with `-o /dev/null -w '%{http_code}'`, so the value never reaches
-  your output.
+  that over (a password, or a signed media URI for `/cast`); then the user
+  writes it to a file and jq builds the body from it straight into curl's
+  stdin, with the response discarded, so the value reaches neither the command
+  nor your output:
+  `jq -n --rawfile t "<secret-file>" '{text: ($t | sub("\r?\n$"; ""))}' | curl -sSf -o /dev/null -w '%{http_code}\n' -X POST "https://popin-aladdin.msageha.net/api/keyboard" -H "Content-Type: application/json" --data-binary @-`
+  (`url` for `/deeplink`, `uri` plus `upnp_class` for `/cast`).
 - `GET /discover` returns `[]` on this instance (the server runs on a Docker
   bridge network, so its LAN broadcast reaches no device); the unit's address
   is fixed in the server config, so it isn't needed.
@@ -91,17 +92,16 @@ an API error.
   `/remote/device` for app launches. The
   light's state and most key presses can't be read: report them as sent, with
   the effect unconfirmed.
-- Before reporting a write as done or acting on a result, check that curl
-  exited 0 and that the HTTP status is the one the operation returns on
-  success. The output of `curl … | jq` doesn't show it: `jq .` prints a JSON
-  error body like any other, a filter turns its missing fields into `null`, and a
-  failed connection prints nothing. For a write, save the body with
-  `-o <file>`, read the status with `-w '%{http_code}'`, and use the body only
-  after both checks pass. For a read a later step depends on,
-  `set -o pipefail` with `curl -sf` and a `jq -e` expression that holds
-  only for the expected answer (an error body must fail it) also works: an error body, empty body or HTML page then fails `jq -e`, but a
-  `3xx` whose body has that field passes, so check the status where a
-  redirect is possible.
+- Send requests as commands.md does, with `curl -sSf` under
+  `set -o pipefail`. A failed connection or an HTTP status of 400 or above
+  then exits non-zero and prints the error to stderr instead of the body, so
+  an error body never reaches a jq filter, which would print it or turn its
+  missing fields into `null` that reads like a result. Treat a write
+  as done only when curl exited 0. A 4xx means the request was rejected and
+  nothing changed: check it against the operation's schema
+  (api-reference) rather than resending it to read the error. After
+  a 5xx, a timeout or a dropped connection the write may have taken effect:
+  read the state before resending.
 - Errors: `400` missing or false `confirm` (`/soap` non-read-only actions, `/power/off`), `422`
   body validation (unknown button, volume out of range, …), `502` device
   returned a SOAP fault or an unexpected answer (`detail`; SOAP faults add

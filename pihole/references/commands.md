@@ -3,34 +3,22 @@
 Ready-to-run `curl` examples for the endpoints listed in
 [api-reference.md](api-reference.md). Base URL: `https://pihole.msageha.net/api`.
 
-Most examples use `curl -s … | jq` for brevity, which shows the body but not
-whether the request succeeded (see the success check in SKILL.md). Send a write
-with the body saved to a file and the status printed, using the operation's
-method and body:
-
-```bash
-curl -sS -o "<body-file>" -w '%{http_code}\n' -X POST "<url>" -H "Content-Type: application/json" -d '<body>'
-```
-
-Go on only when curl exited 0 and the printed status is the one the operation
-returns on success, then read the fields needed with `jq -e '<filter>' "<body-file>"`
-(skip it for an operation that returns no body, such as `204`). Before reporting
-the write as done, read the new state back with the matching read named in
-SKILL.md.
-
-The write examples below use `| jq` only to show the shape of the response;
-send them in the form above, with their method, path and body. Free text taken from responses, web pages or other external sources
+The examples call curl with `-sSf` under `set -o pipefail`: a request that
+fails (no connection, or an HTTP status of 400 or above) makes the command exit
+non-zero with the error on stderr and no body, as the success check in SKILL.md
+expects. Free text taken from responses, web pages or other external sources
 (names, descriptions, URLs) goes into the body through a file, not pasted into
 the command: `jq -n --rawfile v "<text-file>" '($v | sub("\r?\n$"; "")) as $v | <filter>' > "<body-file>"`
 builds the body (dropping the file's trailing LF or CRLF), and
-`--data-binary @"<body-file>"` sends it. A value with quotes or backslashes
-also breaks a JSON literal in `-d '…'`: build such a body with jq
-(`--arg <name> '<value>'`) instead of pasting the value into the JSON.
+`--data-binary @"<body-file>"` sends it. Build a body whose value holds a quote
+or backslash with jq (`--arg <name> '<value>'`) too, since it breaks a JSON
+literal in `-d '…'`.
 
 ## Status Summary
 
 ```bash
-curl -s "https://pihole.msageha.net/api/stats/summary" | jq '{
+set -o pipefail
+curl -sSf "https://pihole.msageha.net/api/stats/summary" | jq '{
   queries_total: .queries.total,
   queries_blocked: .queries.blocked,
   percent_blocked: .queries.percent_blocked,
@@ -42,7 +30,8 @@ curl -s "https://pihole.msageha.net/api/stats/summary" | jq '{
 ## Blocking Status
 
 ```bash
-curl -s "https://pihole.msageha.net/api/dns/blocking" | jq '{blocking, timer}'
+set -o pipefail
+curl -sSf "https://pihole.msageha.net/api/dns/blocking" | jq '{blocking, timer}'
 ```
 
 ## Disable Blocking (temporarily)
@@ -52,9 +41,10 @@ replaces any running timer); tell the user that ads and trackers get through
 while blocking is off.
 
 ```bash
+set -o pipefail
 # Disable for 60 seconds (re-enables when the timer runs out — unless Pi-hole
 # restarts meanwhile: the timer is lost and blocking stays off, so re-check later)
-curl -s -X POST "https://pihole.msageha.net/api/dns/blocking" \
+curl -sSf -X POST "https://pihole.msageha.net/api/dns/blocking" \
   -H "Content-Type: application/json" \
   -d '{"blocking": false, "timer": 60}' | jq .
 ```
@@ -63,7 +53,8 @@ Only when the user explicitly wants it off indefinitely (this also clears a
 running timer):
 
 ```bash
-curl -s -X POST "https://pihole.msageha.net/api/dns/blocking" \
+set -o pipefail
+curl -sSf -X POST "https://pihole.msageha.net/api/dns/blocking" \
   -H "Content-Type: application/json" \
   -d '{"blocking": false, "timer": null}' | jq .
 ```
@@ -74,7 +65,8 @@ Read `GET /dns/blocking` first and confirm with current → new: the request als
 clears a running timer, even when blocking is already on.
 
 ```bash
-curl -s -X POST "https://pihole.msageha.net/api/dns/blocking" \
+set -o pipefail
+curl -sSf -X POST "https://pihole.msageha.net/api/dns/blocking" \
   -H "Content-Type: application/json" \
   -d '{"blocking": true, "timer": null}' | jq .
 ```
@@ -82,42 +74,47 @@ curl -s -X POST "https://pihole.msageha.net/api/dns/blocking" \
 ## Recent Blocked Domains
 
 ```bash
-curl -s "https://pihole.msageha.net/api/stats/recent_blocked?count=10" | jq '.blocked'
+set -o pipefail
+curl -sSf "https://pihole.msageha.net/api/stats/recent_blocked?count=10" | jq '.blocked'
 ```
 
 ## Top Blocked / Permitted Domains
 
 ```bash
-curl -s "https://pihole.msageha.net/api/stats/top_domains?blocked=true&count=10" | jq '.domains'
-curl -s "https://pihole.msageha.net/api/stats/top_domains?blocked=false&count=10" | jq '.domains'
+set -o pipefail
+curl -sSf "https://pihole.msageha.net/api/stats/top_domains?blocked=true&count=10" | jq '.domains'
+curl -sSf "https://pihole.msageha.net/api/stats/top_domains?blocked=false&count=10" | jq '.domains'
 ```
 
 ## Top Clients
 
 ```bash
-curl -s "https://pihole.msageha.net/api/stats/top_clients?count=10" | jq '.clients[] | {ip, name, count}'
+set -o pipefail
+curl -sSf "https://pihole.msageha.net/api/stats/top_clients?count=10" | jq '.clients[] | {ip, name, count}'
 ```
 
 ## Query Log
 
 ```bash
+set -o pipefail
 # Recent queries
-curl -s "https://pihole.msageha.net/api/queries?length=20" | jq '.queries[] | {domain, type, status, client: .client.ip, time}'
+curl -sSf "https://pihole.msageha.net/api/queries?length=20" | jq '.queries[] | {domain, type, status, client: .client.ip, time}'
 
 # Filtered by domain
-curl -s "https://pihole.msageha.net/api/queries?domain=<domain>&length=10" | jq '.queries[] | {domain, status, client: .client.ip}'
+curl -sSf "https://pihole.msageha.net/api/queries?domain=<domain>&length=10" | jq '.queries[] | {domain, status, client: .client.ip}'
 
 # Filtered by client
-curl -s "https://pihole.msageha.net/api/queries?client_ip=<client-ip>&length=20" | jq '.queries[] | {domain, status, type}'
+curl -sSf "https://pihole.msageha.net/api/queries?client_ip=<client-ip>&length=20" | jq '.queries[] | {domain, status, type}'
 
 # Query the long-term on-disk DB instead of the in-memory buffer
-curl -s "https://pihole.msageha.net/api/queries?disk=true&length=20" | jq '.queries'
+curl -sSf "https://pihole.msageha.net/api/queries?disk=true&length=20" | jq '.queries'
 ```
 
 ## Search Domain (which lists contain it)
 
 ```bash
-curl -s "https://pihole.msageha.net/api/search/<domain>" | jq '{
+set -o pipefail
+curl -sSf "https://pihole.msageha.net/api/search/<domain>" | jq '{
   results: .search.results,
   domains: [.search.domains[] | {domain, type, kind, enabled}],
   gravity: [.search.gravity[] | {domain, type, enabled}]
@@ -133,18 +130,19 @@ rule added or removed here is undone at the next sync — tell the user (deny
 rules aren't synced).
 
 ```bash
+set -o pipefail
 # Allow (whitelist)
-curl -s -X POST "https://pihole.msageha.net/api/domains/allow/exact" \
+curl -sSf -X POST "https://pihole.msageha.net/api/domains/allow/exact" \
   -H "Content-Type: application/json" \
   -d '{"domain": "<domain>", "comment": "<reason>"}' | jq .
 
 # Deny (blacklist)
-curl -s -X POST "https://pihole.msageha.net/api/domains/deny/exact" \
+curl -sSf -X POST "https://pihole.msageha.net/api/domains/deny/exact" \
   -H "Content-Type: application/json" \
   -d '{"domain": "<domain>", "comment": "<reason>"}' | jq .
 
 # Deny with regex
-curl -s -X POST "https://pihole.msageha.net/api/domains/deny/regex" \
+curl -sSf -X POST "https://pihole.msageha.net/api/domains/deny/regex" \
   -H "Content-Type: application/json" \
   -d '{"domain": "<regex>", "comment": "<reason>"}' | jq .
 ```
@@ -154,32 +152,35 @@ curl -s -X POST "https://pihole.msageha.net/api/domains/deny/regex" \
 Removing an entry needs the same current → new confirmation.
 
 ```bash
+set -o pipefail
 # Remove from exact allowlist / denylist (204 = removed)
-curl -s -o /dev/null -w '%{http_code}\n' -X DELETE "https://pihole.msageha.net/api/domains/allow/exact/<domain>"
-curl -s -o /dev/null -w '%{http_code}\n' -X DELETE "https://pihole.msageha.net/api/domains/deny/exact/<domain>"
+curl -sSf -o /dev/null -w '%{http_code}\n' -X DELETE "https://pihole.msageha.net/api/domains/allow/exact/<domain>"
+curl -sSf -o /dev/null -w '%{http_code}\n' -X DELETE "https://pihole.msageha.net/api/domains/deny/exact/<domain>"
 
 # List all domains (allow/deny)
-curl -s "https://pihole.msageha.net/api/domains" | jq '.domains[] | {domain, type, kind, enabled, comment}'
+curl -sSf "https://pihole.msageha.net/api/domains" | jq '.domains[] | {domain, type, kind, enabled, comment}'
 ```
 
 ## Network Devices / DHCP Leases
 
 ```bash
-curl -s "https://pihole.msageha.net/api/network/devices?max_devices=20" | jq '.devices[] | {hwaddr, ip: .ips[0].ip, name: .ips[0].name, lastQuery}'
+set -o pipefail
+curl -sSf "https://pihole.msageha.net/api/network/devices?max_devices=20" | jq '.devices[] | {hwaddr, ip: .ips[0].ip, name: .ips[0].name, lastQuery}'
 
-curl -s "https://pihole.msageha.net/api/dhcp/leases" | jq '.leases[] | {name, ip, hwaddr, expires}'
+curl -sSf "https://pihole.msageha.net/api/dhcp/leases" | jq '.leases[] | {name, ip, hwaddr, expires}'
 ```
 
 ## System Info / Version
 
 ```bash
-curl -s "https://pihole.msageha.net/api/info/system" | jq '{
+set -o pipefail
+curl -sSf "https://pihole.msageha.net/api/info/system" | jq '{
   uptime: .system.uptime,
   memory: .system.memory,
   cpu: .system.cpu
 }'
 
-curl -s "https://pihole.msageha.net/api/info/version" | jq .
+curl -sSf "https://pihole.msageha.net/api/info/version" | jq .
 ```
 
 ## Gravity / DNS Actions
@@ -192,7 +193,7 @@ list and can take a while.
 set -o pipefail
 base=https://pihole.msageha.net/api
 log=$(mktemp); trap 'rm -f "$log"' EXIT
-before=$(curl -sf -m 10 "$base/stats/summary" | jq -e '.gravity.last_update | numbers') \
+before=$(curl -sSf -m 10 "$base/stats/summary" | jq -e '.gravity.last_update | numbers') \
   || { echo "cannot read the current gravity state"; exit 1; }
 # If the request itself fails (timeout, dropped connection), gravity may still be
 # running on the server: the outcome is unknown, so check the lists later instead of rerunning
@@ -207,13 +208,13 @@ fi
 # the database was loaded, not that queries already use it: check the query log for that)
 loaded=
 for _ in $(seq 60); do
-  now=$(curl -sf -m 10 "$base/stats/summary" | jq -e '.gravity.last_update | numbers') && [ "$now" != "$before" ] && { loaded=1; break; }
+  now=$(curl -sSf -m 10 "$base/stats/summary" | jq -e '.gravity.last_update | numbers') && [ "$now" != "$before" ] && { loaded=1; break; }
   sleep 1
 done
 [ -n "$loaded" ] || { echo "new gravity database not picked up yet"; exit 1; }
 # Enabled lists that weren't updated or unchanged (status 1 / 2), or imported nothing
 lists=$(mktemp) || exit 1; trap 'rm -f "$log" "$lists"' EXIT
-curl -sf -m 30 -o "$lists" "$base/lists" && jq -e '.lists | type == "array"' "$lists" >/dev/null \
+curl -sSf -m 30 -o "$lists" "$base/lists" && jq -e '.lists | type == "array"' "$lists" >/dev/null \
   || { echo "cannot read the lists"; exit 1; }
 bad=$(jq -c '.lists[] | select(.enabled and ((.status | IN(1, 2) | not) or (.number // 0) <= 0)) | {id, status, number}' "$lists") \
   || { echo "unexpected /lists response"; exit 1; }
@@ -225,7 +226,8 @@ a pending blocking timer (the scheduled switch then never happens) — confirm w
 first, and re-check `GET /dns/blocking` afterwards.
 
 ```bash
-curl -s -X POST "https://pihole.msageha.net/api/action/restartdns" | jq .
+set -o pipefail
+curl -sSf -X POST "https://pihole.msageha.net/api/action/restartdns" | jq .
 ```
 
 ## Adlists
@@ -237,12 +239,21 @@ added or removed here is undone at the next sync — tell the user (allow
 adlists aren't synced).
 
 ```bash
+set -o pipefail
 # List all adlists
-curl -s "https://pihole.msageha.net/api/lists" | jq '.lists[] | {id, type, enabled, comment, number}'
+curl -sSf "https://pihole.msageha.net/api/lists" | jq '.lists[] | {id, type, enabled, comment, number}'
 
 # Add new adlist (type is required)
-curl -s -X POST "https://pihole.msageha.net/api/lists?type=block" \
+curl -sSf -X POST "https://pihole.msageha.net/api/lists?type=block" \
   -H "Content-Type: application/json" \
   -d '{"address": "<list-url>", "comment": "<reason>"}' \
-  | jq '{added: (.lists | map(.id)), errors: (.processed.errors | length)}'   # the response echoes the URL
+  | jq -e '{added: [.lists[]?.id], errors: (.processed.errors | length)}
+    | if (.added | length) > 0 and .errors == 0 then . else error("adlist not added") end'   # the response echoes the URL
+
+# Add a URL that carries credentials: the user writes it to <url-file>; it stays out of the command
+jq -n --rawfile u "<url-file>" '{address: ($u | sub("\r?\n$"; "")), comment: "<reason>"}' \
+  | curl -sSf -X POST "https://pihole.msageha.net/api/lists?type=block" \
+    -H "Content-Type: application/json" --data-binary @- \
+  | jq -e '{added: [.lists[]?.id], errors: (.processed.errors | length)}
+    | if (.added | length) > 0 and .errors == 0 then . else error("adlist not added") end'
 ```

@@ -49,7 +49,7 @@ codex exec -p "<profile>" -s read-only --ignore-rules -C "<project-dir>" -o "<ou
 - `-C` の先が git リポジトリでなければ `--skip-git-repo-check` を足す (無いと codex exec は開始せずに終了する)。
 - `-s read-only` は相談・レビュー向け。編集まで任せる (ユーザーが指定したとき) なら `-s workspace-write` にする。どちらでも `--ignore-rules` を付ける。`~/.codex/rules/` の allow に一致するコマンド (git commit 等) は、sandbox の外で実行されるため。
 - 並列に走らせるときも出力先を分ける。同じ `prompt.md` / `run.log` / `answer.md` を共有すると上書きし合い、読み込み中のプロンプトに後続の指示が混ざる。
-- `run.log` の先頭に `model:` / `provider:` / `approval:` / `sandbox:` / `session id:` が出る。まずここで、意図した profile が効いていることを確かめる。`approval:` は通常 `never` で、承認待ちでは止まらない (`approvals_reviewer` を自動レビューにした構成では config の `approval_policy` が使われる)。
+- `run.log` の先頭に `model:` / `provider:` / `approval:` / `sandbox:` / `session id:` が出る。まずここで、意図した profile が効いていることを確かめる (応答本文でモデルが名乗る名前は、profile が効いた根拠にならない)。`approval:` は通常 `never` で、承認待ちでは止まらない (`approvals_reviewer` を自動レビューにした構成では config の `approval_policy` が使われる)。
 - 最終回答は `-o` のファイルに書かれる。数十分かかることがあるのでバックグラウンドで実行する。完了は、起動したプロセスの終了コードが 0 であることを確かめ、`run.log` の途中の Error・Warning まで読んで結果に影響したかを判断し、回答を読んで依頼した完了条件を満たしているかで判定する (`answer.md` は起動の直後に作られうるので、あることだけでは完了と言えない)。
 - 続きを頼むときは、続きの指示を新しい出力先のファイルに書き、初回と同じ `-C`・`-s` (編集を任せた委譲なら `workspace-write`)・`--skip-git-repo-check` (初回に付けたなら) を付けて `codex exec -p "<profile>" -s read-only --ignore-rules -C "<project-dir>" -o "<new-out-dir>/answer.md" resume "<session-id>" - < "<new-out-dir>/prompt.md" > "<new-out-dir>/run.log" 2>&1` で渡す。resume が引き継ぐのは会話だけで、`-p` / `-s` / `--ignore-rules` を省くと、model と sandbox は base config (既定モデル・`workspace-write`) に戻り、`~/.codex/rules/` も読み込まれる。`resume --last` は並列に走らせた別セッションを拾いうるので使わない。
 - コードレビューは `codex exec -p "<profile>" -s read-only --ignore-rules review - < "<prompt-file>"` で頼む (トップレベルの `codex review` には `--profile` が無い)。対象範囲と検証の結果はプロンプトに書く。profile が効いたかは `run.log` の `model:` で確かめる。
@@ -65,6 +65,4 @@ codex exec -p "<profile>" -s read-only --ignore-rules -C "<project-dir>" -o "<ou
 
 ## 生存確認
 
-プロセスが生きているかは `pgrep -fl 'codex exec'`、イベントが増えているかは `tail -n 5 "<out-dir>/run.log"` で見る。
-
-プロセスが非ゼロで終わったか、`run.log` の末尾にエラーがあれば異常終了で、`answer.md` があっても完了ではない。応答本文でモデルが名乗る名前 (「Fugu orchestration system の worker agent」等) は検証の根拠にせず、`run.log` 先頭の `model:` を見る。
+プロセスが生きているかは `pgrep -fl 'codex exec'`、イベントが増えているかは `tail -n 5 "<out-dir>/run.log"` で見る。終わった後の判定は、上の完了の条件による。

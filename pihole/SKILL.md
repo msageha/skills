@@ -60,17 +60,16 @@ the caller isn't on that list, not an API error. Pi-hole itself answers `401`
   month). For these synced entries, API changes are temporary — tell the
   user; lasting ones need the files changed. Deny rules and allow adlists
   aren't synced, so API changes to them last.
-- Before reporting a write as done or acting on a result, check that curl
-  exited 0 and that the HTTP status is the one the operation returns on
-  success. The output of `curl … | jq` doesn't show it: `jq .` prints a JSON
-  error body like any other, a filter turns its missing fields into `null`, and a
-  failed connection prints nothing. For a write, save the body with
-  `-o <file>`, read the status with `-w '%{http_code}'`, and use the body only
-  after both checks pass. For a read a later step depends on,
-  `set -o pipefail` with `curl -sf` and a `jq -e` expression that holds
-  only for the expected answer (an error body must fail it) also works: an error body, empty body or HTML page then fails `jq -e`, but a
-  `3xx` whose body has that field passes, so check the status where a
-  redirect is possible.
+- Send requests as commands.md does, with `curl -sSf` under
+  `set -o pipefail`. A failed connection or an HTTP status of 400 or above
+  then exits non-zero and prints the error to stderr instead of the body, so
+  an error body never reaches a jq filter, which would print it or turn its
+  missing fields into `null` that reads like a result. Treat a write
+  as done only when curl exited 0. A 4xx means the request was rejected and
+  nothing changed: check it against the operation's schema
+  (api-reference) rather than resending it to read the error. After
+  a 5xx, a timeout or a dropped connection the write may have taken effect:
+  read the state before resending.
 - Report a write as done only after reading it back: `GET /dns/blocking`,
   `GET /domains/{type}/{kind}/{domain}`, `GET /lists`, and the matching `GET`
   for other changes.
@@ -81,9 +80,9 @@ the caller isn't on that list, not an API error. Pi-hole itself answers `401`
 - List URLs (`address` in `/lists`, `/search`, `POST /lists` responses, and the
   gravity log) can carry credentials or tokens in any part: don't print them;
   refer to a list by its `id`, and don't print the gravity log itself. To add
-  a URL that carries credentials, the user writes it to a file and the body is
-  built from it (`jq -n --rawfile u "<url-file>" '{address: ($u | sub("\r?\n$"; ""))}'`),
-  so the URL stays out of the command.
+  a URL that carries credentials, the user writes it to a file and jq builds
+  the body from it straight into curl's stdin (the second Add example in
+  commands.md), so the URL reaches neither the command nor your output.
 - `GET /search/{domain}` shows which lists contain a domain; it doesn't apply
   group assignments or allow rules, so it doesn't prove a given client is
   blocked — use the query log (`GET /queries?domain=…&client_ip=…`) for that.

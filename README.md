@@ -19,9 +19,9 @@
 
 ## 使い方
 
-`mise run install-<agent>` (下のタスク一覧) で各エージェントの skills ディレクトリに全 skill を配置する。プロジェクト単位で使うなら、skill ディレクトリをそのプロジェクトの skills ディレクトリ (Claude Code は `.claude/skills/`) に置く。cognitive-rhythm-writing は japanese-tech-writing を同じ階層から読むので、両方を置く。
+`mise run install-<agent>` (下のタスク一覧) で各エージェントの skills ディレクトリに全 skill を配置する。プロジェクト単位で使うなら、skill ディレクトリをそのプロジェクトの skills ディレクトリ (Claude Code は `.claude/skills/`) に置く。cognitive-rhythm-writing は japanese-tech-writing を同じ階層から読むので、両方を置く。詳細は各 skill の `SKILL.md` を参照。
 
-`install-openclaw` は、git が追跡しているファイルだけをコピーする (commit 前の skill は配置せずに止まる)。配置したコピーには配置元を書いた印 (`.installed-from`) を置き、印の無い同名のディレクトリがあれば上書きせずに止まる。印の無いコピー (印を書かない方法で配置したもの) があるときは、配置先の該当ディレクトリを消してから実行し直す。`install-*` の link は、配置先に他所を指す同名の symlink があっても止まる。印のあるコピーは実行のたびに置き換わるので、配置先で足したファイルは残らない。詳細は各 skill の `SKILL.md` を参照。
+`install-openclaw` は、git が追跡しているファイルだけをコピーする (git に追加していない skill があれば、配置せずに止まる)。配置したコピーには配置元を書いた印 (`.installed-from`) を置く。印のあるコピーは実行のたびに置き換わるので、配置先で足したファイルは残らない。配置先に印の無い同名のディレクトリ (別の方法で置いた skill) があれば上書きせずに止まるので、そのディレクトリを消してから実行し直す。link の `install-*` も、配置先に他所を指す同名の symlink があれば止まる。
 
 ## タスク
 

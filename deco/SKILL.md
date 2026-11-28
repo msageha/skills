@@ -64,18 +64,18 @@ means one of these, not an API error.
   Operations that cut off the network or can't be undone
   (`x-deco-destructive`) also need `"confirm": true`.
 - Confirm these even when the user asked for them, naming the target, the
-  effect and how to undo it: Wi-Fi toggles and config changes (they briefly
-  disconnect clients on the band), rebooting (all nodes take the network
-  down for minutes; one node drops the clients and mesh links behind it),
-  a firmware upgrade (network down for minutes), and any other
-  `x-deco-destructive` operation (factory reset, unbinding, WAN disconnect …):
-  say what is lost and how to recover it before sending `"confirm": true`.
-- Changes to who can reach what also need confirmation even when the request
-  is specific: Wi-Fi on/off and credentials, guest isolation, port
-  forwarding, client blocking, DHCP reservations, WAN / IPv6 DNS, DDNS,
-  remote management and VPN. Read the current entries first and show
-  current → new; for a password, say that it changes without showing either
-  value. Guest settings are per band: change and read back every band the
+  effect and how to undo it: rebooting (all nodes take the network down for
+  minutes; one node drops the clients and mesh links behind it), a firmware
+  upgrade (network down for minutes), and any other `x-deco-destructive`
+  operation (factory reset, unbinding, WAN disconnect …): say what is lost
+  and how to recover it before sending `"confirm": true`.
+- Also confirm these even when the request is specific, after reading the
+  current entries and showing current → new (for a password, say that it
+  changes without showing either value): Wi-Fi writes (`POST /wireless`,
+  `POST /wireless/config`; they briefly disconnect clients on the band) and
+  other changes to who can reach what — guest isolation, port forwarding,
+  client blocking, DHCP reservations, WAN / IPv6 DNS, DDNS, remote management
+  and VPN. Guest settings are per band: change and read back every band the
   request covers. Open only the ports and hosts the use needs.
 - Any other write the user asked for, with its target settled, runs without
   asking again; confirm once when you chose it yourself or when the request
@@ -89,19 +89,20 @@ means one of these, not an API error.
   and re-read the state rather than blindly resending.
 - `POST /reboot` with `macs` omitted, `null` or `[]` reboots every node —
   when targeting specific nodes and the MAC lookup comes back empty, stop.
-- Before reporting a write as done or acting on a result, check that curl
-  exited 0 and that the HTTP status is the one the operation returns on
-  success. The output of `curl … | jq` doesn't show it: `jq .` prints a JSON
-  error body like any other, a filter turns its missing fields into `null`, and a
-  failed connection prints nothing. For a write, save the body with
-  `-o <file>`, read the status with `-w '%{http_code}'`, and use the body only
-  after both checks pass. For a read a later step depends on,
-  `set -o pipefail` with `curl -sf` and a `jq -e` expression that holds
-  only for the expected answer (an error body must fail it) also works: an error body, empty body or HTML page then fails `jq -e`, but a
-  `3xx` whose body has that field passes, so check the status where a
-  redirect is possible.
+- Send requests as commands.md does, with `curl -sSf` under
+  `set -o pipefail`. A failed connection or an HTTP status of 400 or above
+  then exits non-zero and prints the error to stderr instead of the body, so
+  an error body never reaches a jq filter, which would print it or turn its
+  missing fields into `null` that reads like a result. A `502` body can also hold secrets, which `-f` keeps out of your output. Treat a write
+  as done only when curl exited 0. A 4xx means the request was rejected and
+  nothing changed: check it against the operation's schema
+  (api-reference) rather than resending it to read the error. After
+  a 5xx, a timeout or a dropped connection the write may have taken effect:
+  read the state before resending.
 - Report a write as done only after reading the new state back with the
-  matching read (`GET /wireless` for Wi-Fi, the form's `read` / `getlist` for
+  matching read (`GET /wireless` for Wi-Fi, `POST /app/wireless/wlan/read` for
+  the guest-only `host_isolation` / `access_duration` / `bandwidth_limit`, the
+  form's `read` / `getlist` for
   `/luci/...` and `/app/...` writes). A TMP write can take a moment to apply.
 - Errors: `400` `confirm: false`, `401` router auth failure (a rejected TMP
   login persists until the server restarts with fixed credentials), `404` nothing

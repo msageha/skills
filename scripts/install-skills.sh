@@ -72,7 +72,7 @@ for skill_md in "$repo"/*/SKILL.md; do
     # 既存のコピーを退避してから差し替える (差し替えに失敗したら退避したものを戻す)。
     # mktemp -d のディレクトリは 0700 なので、その中に作ったコピー (元の権限を保つ) を動かす
     if [ -z "$(git -C "$repo" ls-files -- "$skill/SKILL.md")" ]; then
-      echo "error: $skill/SKILL.md is not tracked by git; commit it before copying" >&2
+      echo "error: $skill/SKILL.md is not tracked by git; git add the skill directory before copying" >&2
       exit 1
     fi
     tmp="$(mktemp -d "$dest/.$skill.XXXXXX")"
