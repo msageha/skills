@@ -17,27 +17,13 @@ seconds, float) not shown in the examples below.
 
 All endpoints on this instance return data without needing a session.
 
-If a password is configured in the future:
-
-```bash
-# Login
-curl -s -X POST "https://pihole.msageha.net/api/auth" \
-  -H "Content-Type: application/json" \
-  -d '{"password": "your-password"}' | jq '.session.sid'
-
-# Use SID in subsequent requests via header, cookie, or query parameter
-curl -s -H "sid: YOUR_SID" "https://pihole.msageha.net/api/stats/summary"
-curl -s "https://pihole.msageha.net/api/stats/summary?sid=YOUR_SID"
-
-# Logout
-curl -s -X DELETE "https://pihole.msageha.net/api/auth" -H "sid: YOUR_SID"
-```
-
-Session validity: 5 minutes by default, extended by each authenticated request.
-`GET /auth/app` generates a long-lived "application password" (closest thing to
-a persistent API key) instead of the interactive admin password. `GET /auth/totp`
-issues a new 2FA secret. `GET /auth/sessions` / `DELETE /auth/session/{id}`
-manage active sessions.
+If a password is ever configured, `POST /auth` returns a session id that the
+API takes as the `sid` header, cookie or query parameter (valid 5 minutes by
+default, extended by each authenticated request); the password and session id
+are secrets, so the user logs in, not the agent. `GET /auth/app` generates a
+long-lived application password and `GET /auth/totp` a new 2FA secret: don't
+call them; the user sets them up. `GET /auth/sessions` /
+`DELETE /auth/session/{id}` manage active sessions.
 
 ---
 
@@ -47,7 +33,7 @@ manage active sessions.
 
 Check authentication status.
 
-**Response:**
+Response:
 
 ```json
 {
@@ -67,7 +53,7 @@ Check authentication status.
 
 Overview of Pi-hole activity.
 
-**Response:**
+Response:
 
 ```json
 {
@@ -101,7 +87,8 @@ Get current blocking status.
 
 ### POST /dns/blocking
 
-Change blocking status.
+Change blocking status. It applies to every client and replaces any running
+timer: read `GET /dns/blocking` and confirm with current → new first.
 
 | Field    | Type         | Description                                                                                                                           |
 | -------- | ------------ | ------------------------------------------------------------------------------------------------------------------------------------- |
@@ -117,7 +104,7 @@ Change blocking status.
 | blocked   | boolean | `true` = blocked domains, `false` = permitted (default: false) |
 | count     | integer | Number of results (default: 10)                                |
 
-**Response:** `{ "domains": [{ "domain": "example.com", "count": 8516 }], "total_queries": 29160, "blocked_queries": 6379 }`
+Response: `{ "domains": [{ "domain": "example.com", "count": 8516 }], "total_queries": 29160, "blocked_queries": 6379 }`
 
 ---
 
@@ -128,7 +115,7 @@ Change blocking status.
 | blocked   | boolean | `true` = by blocked queries, `false` = by total (default: false) |
 | count     | integer | Number of results (default: 10)                                  |
 
-**Response:** `{ "clients": [{ "ip": "192.168.0.44", "name": "raspberrypi.lan", "count": 5896 }], "total_queries": 29160, "blocked_queries": 6379 }`
+Response: `{ "clients": [{ "ip": "192.168.0.44", "name": "raspberrypi.lan", "count": 5896 }], "total_queries": 29160, "blocked_queries": 6379 }`
 
 ---
 
@@ -138,7 +125,7 @@ Change blocking status.
 | --------- | ------- | ------------------------------ |
 | count     | integer | Number of results (default: 1) |
 
-**Response:** `{ "blocked": ["doubleclick.net", "..."] }`
+Response: `{ "blocked": ["doubleclick.net", "..."] }`
 
 ---
 
@@ -168,7 +155,7 @@ Recent DNS query log. All parameters optional.
 | disk         | boolean | `true` = query the on-disk long-term DB instead of the in-memory buffer (default: false)                                                                                                                                   |
 | cursor       | integer | Upper bound of query IDs while paging (send back the first response's value; it doesn't advance). Rows can still age out of the in-memory log meanwhile                                                                    |
 
-**Response:**
+Response:
 
 ```json
 {
@@ -218,7 +205,7 @@ Search domain in Pi-hole's lists and gravity.
 | N         | integer | Max results per type (default: 20)  |
 | debug     | boolean | Include debug info (default: false) |
 
-**Response:**
+Response:
 
 ```json
 {
@@ -258,7 +245,7 @@ Search domain in Pi-hole's lists and gravity.
 List all domains. Optional path segments for filtering: `/domains`,
 `/domains/allow`, `/domains/deny`, `/domains/allow/exact`, `/domains/deny/regex`.
 
-**Response item:**
+Response item:
 
 | Field         | Type      | Description                                                          |
 | ------------- | --------- | -------------------------------------------------------------------- |
@@ -276,6 +263,8 @@ List all domains. Optional path segments for filtering: `/domains`,
 #### POST /domains/{type}/{kind}
 
 Add a domain. Both `{type}` (`allow`/`deny`) and `{kind}` (`exact`/`regex`) required.
+This and the `PUT` / `DELETE` below change DNS filtering for every client: read
+the current entries and confirm with current → new first.
 
 | Field   | Type               | Required | Description                                   |
 | ------- | ------------------ | -------- | --------------------------------------------- |
@@ -305,7 +294,7 @@ Batch variant: `POST /domains:batchDelete` with body `[{item, type, kind}, ...]`
 | max_devices   | integer | Max devices to return (default: 10)   |
 | max_addresses | integer | Max addresses per device (default: 3) |
 
-**Response item:** the per-IP data lives under **`ips`**; there is no
+Response item: the per-IP data lives under `ips`; there is no
 per-device `name` field (only per-IP `name`, usually `null` unless reverse
 DNS resolves it).
 
@@ -333,7 +322,7 @@ DNS resolves it).
 }
 ```
 
-Related: `DELETE /network/devices/{device_id}`, `GET /network/gateway`,
+Related: `DELETE /network/devices/{device_id}` (unless the user asked for it, confirm first), `GET /network/gateway`,
 `GET /network/routes`, `GET /network/interfaces` (all take an optional
 `detailed` param).
 
@@ -343,7 +332,7 @@ Related: `DELETE /network/devices/{device_id}`, `GET /network/gateway`,
 
 Active DHCP leases.
 
-**Response item:**
+Response item:
 
 | Field    | Type    | Description                     |
 | -------- | ------- | ------------------------------- |
@@ -353,7 +342,7 @@ Active DHCP leases.
 | expires  | integer | Expiry timestamp (0 = infinite) |
 | clientid | string  | Client ID                       |
 
-`DELETE /dhcp/leases/{ip}` removes a lease.
+`DELETE /dhcp/leases/{ip}` removes a lease (unless the user asked for it, confirm first).
 
 ---
 
@@ -362,7 +351,7 @@ Active DHCP leases.
 Adlists (blocklists/allowlists). `type` (`allow`/`block`) optional on GET
 (omit for both).
 
-**Response item:**
+Response item:
 
 | Field                                     | Type      | Description                                                                                                                                  |
 | ----------------------------------------- | --------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -379,13 +368,14 @@ Adlists (blocklists/allowlists). `type` (`allow`/`block`) optional on GET
 
 #### POST /lists
 
-**`type` (`allow`/`block`) is a required query parameter**, e.g.
-`POST /lists?type=block`.
+`type` (`allow`/`block`) is a required query parameter, e.g.
+`POST /lists?type=block`. Before adding, updating or removing an adlist, read
+the current lists and confirm with current → new.
 
 ```json
 {
-  "address": "https://example.com/blocklist.txt",
-  "comment": "Added via API",
+  "address": "<list-url>",
+  "comment": "<reason>",
   "enabled": true
 }
 ```
@@ -393,6 +383,9 @@ Adlists (blocklists/allowlists). `type` (`allow`/`block`) optional on GET
 #### PUT /lists/{list} / DELETE /lists/{list}
 
 Update or remove an adlist. The `type` query parameter is required on `PUT` and `DELETE` too.
+`PUT` replaces the entry: an omitted `enabled` becomes `true` (re-enabling a disabled list)
+and an omitted `comment` becomes `null`, so send the current values of the fields you don't
+change, and read the list back afterwards.
 `{list}` is the URL-encoded address. Batch variant: `POST /lists:batchDelete`.
 
 ---
@@ -406,13 +399,17 @@ Update or remove an adlist. The `type` query parameter is required on `PUT` and 
 | `POST /action/flush/logs`    | Flush DNS logs and purge last 24h from the DB.                                                                                                                                                                                                                                                                                                                                   |
 | `POST /action/flush/network` | Flush the network table (remove all known devices). Replaces the deprecated `flush/arp`.                                                                                                                                                                                                                                                                                         |
 
+Confirm gravity (it can take a while) and `restartdns` (it interrupts resolution) with
+the user even when asked. The flushes delete data irreversibly: run them only when the
+user asked for them, and confirm otherwise.
+
 ---
 
 ### System Information
 
 `GET /info/system`, `/info/version`, `/info/host`, `/info/sensors`, `/info/ftl`,
 `/info/client`, `/info/database`, `/info/metrics`, `/info/login`. Also
-`/info/messages` (+ `/info/messages/{id}` DELETE, `/info/messages/count`) for
+`/info/messages` (+ `/info/messages/{id}` DELETE, which needs the user's confirmation unless they asked for it, and `/info/messages/count`) for
 the alerts/diagnosis system, and `GET /padd` for a dashboard-style summary
 (optional `full` param).
 
@@ -432,10 +429,15 @@ equivalents `GET /history/database`, `GET /history/database/clients`
 
 ## Endpoints not covered by this skill (for reference)
 
-Not documented in detail here to keep this skill lean, but worth knowing they exist:
+Not documented in detail here to keep this skill lean, but worth knowing they exist. Their
+non-`GET` methods change DNS filtering or configuration: read the current entries and
+confirm with current → new first. Before `POST /teleporter` (overwrites the configuration)
+or `PATCH /config` (changes settings in it), ask the user to take a backup with
+`GET /teleporter`; it can hold password hashes and 2FA secrets, so the user downloads and
+keeps it, not the agent:
 
-- `GET/POST/DELETE /groups`, `/groups/{name}`, `/groups:batchDelete` — group management
-- `GET/POST/DELETE /clients`, `/clients/{client}`, `/clients:batchDelete`, `/clients/_suggestions`
+- `GET/POST/PUT/DELETE /groups`, `/groups/{name}`, `/groups:batchDelete` — group management
+- `GET/POST/PUT/DELETE /clients`, `/clients/{client}`, `/clients:batchDelete`, `/clients/_suggestions`
 - `GET/PATCH /config`, `/config/_properties`, `/config/{element}(/{value})` — live FTL config
 - `GET /teleporter` (export backup zip), `POST /teleporter` (multipart import/restore)
 - `GET /logs/dnsmasq`, `/logs/ftl`, `/logs/webserver` — raw log tailing with `nextID` polling

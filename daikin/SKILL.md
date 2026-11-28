@@ -28,7 +28,8 @@ means one of these, not an API error.
   unit — report them by name. `pm25_level` / `dust_level` / `odor_level` are
   `0` (clean) .. `5`; the `*_raw` sensor values have no known unit — present
   them as relative readings.
-- Purpose-built controls that don't need user confirmation: `POST /power`
+- Purpose-built controls, run without further confirmation when the user asks
+  for the change: `POST /power`
   (`{"on": bool}`), `POST /humidify` (`{"on": bool}` — `true` humidify +
   purify, `false` purify only), `POST /course` (`{"course": "<name>"}`),
   `POST /fan-speed` (`{"fan_speed": "<name>"}`, only takes effect while
@@ -42,20 +43,39 @@ means one of these, not an API error.
   read `GET /status` first.
 - `POST /write` is a raw dsiot property write (`confirm: true` required,
   otherwise 422) and can change arbitrary unit settings — confirm with the
-  user and prefer the purpose-built endpoints. The unit stores out-of-range
-  values as-is; one `/status` can't decode makes it return 502 until the
-  property is restored. Before writing, read the property (`GET /tree` for
-  `dgc_status`, `POST /read` for other containers), note its `pv`, keep the
-  new value within the bounds (`min`..`max` in `/tree`, `md.mi`..`md.mx` in
-  `/read`; for enum-like ones a value whose bit is set in that upper bound, a bitmask),
-  read back after, and restore the original when probing.
-  `POST /read` and `GET /tree` are read-only and safe; `POST /read` returns
+  user and prefer the purpose-built endpoints.
+- The unit stores out-of-range values as-is; one `/status` can't decode makes
+  it return 502 until the property is restored. So before `POST /write`, read
+  the property (`GET /tree` for `dgc_status`, `POST /read` for other
+  containers) and note its `pv`.
+- Write only a supported value. For a numeric property that is `min`..`max`
+  in `/tree` (`md.mi`..`md.mx` in `/read`). For an enum-like property `max`
+  (`md.mx`) isn't an upper bound but a bitmask of the supported values (bit n
+  = value n): write a value n whose bit is set, not the mask itself.
+- After `POST /write`, read the property back. Don't write to the unit to
+  find out what a property does: explore with `GET /tree` and `POST /read`,
+  and write only a change the user asked for.
+- `POST /read` and `GET /tree` are read-only and safe; `POST /read` returns
   per-address dsiot errors inside a 200, so check each `rsc`.
 - After `POST /course` while purifying only, wait until the humidify side
   has synced (a few seconds; check `e_1002/e_3007/p_03` in `GET /tree`, since
   `/status.course` shows the purify side then) before
   `POST /humidity-setting`; otherwise it writes to the previous course or
   returns 409.
+- Send requests as commands.md does, with `curl -sSf` under
+  `set -o pipefail`. A failed connection or an HTTP status of 400 or above
+  then exits non-zero and prints the error to stderr instead of the body, so
+  an error body never reaches a jq filter, which would print it or turn its
+  missing fields into `null` that reads like a result. Treat a write
+  as done only when curl exited 0. A 4xx means the request was rejected and
+  nothing changed: check it against the operation's schema
+  (api-reference) rather than resending it to read the error. After
+  a 5xx, a timeout or a dropped connection the write may have taken effect:
+  read the state before resending.
+- Report a write as done only after reading the new state back: `GET /status`
+  for the purpose-built controls (`fan_speed` shows the effect only while
+  `course` is `manual`; `humidity_setting` is `null` while it is automatic),
+  and the property in `GET /tree` or `POST /read` after `POST /write`.
 - Errors: `409` unsupported value / not selectable in the current state,
   `422` request validation (including a missing `confirm`), `502` unit
   returned an error or an undecodable value (`detail` + dsiot `rsc`; `200x`

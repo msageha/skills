@@ -12,10 +12,27 @@
 !/dprint.json
 !/renovate.json
 
-# GitHub Actions
-!/.github/
-!/.github/**
-
 # トップレベルの全ディレクトリを丸ごと許可 (各 skill と scripts/ が該当)
 !/*/
 !/*/**
+
+# 上の許可はドット始まりのディレクトリ (.worktrees/・.claude/ など、ローカルの作業場所や agent の設定) にも
+# 当たるので外し、追跡する .github/ だけを許可し直す
+/.*/
+!/.github/
+!/.github/**
+
+# 許可したディレクトリの中でも、secret と OS / エディタのファイルは追跡しない
+.env*
+!.env.template
+*.pem
+*.key
+auth.json
+*credentials*.json
+.netrc
+.npmrc
+id_rsa*
+id_ecdsa*
+id_ed25519*
+*.p12
+.DS_Store

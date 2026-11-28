@@ -14,9 +14,10 @@ description = "Symlink all skills into ~/.claude/skills"
 run = 'scripts/install-skills.sh link "$HOME/.claude/skills"'
 shell = "bash -c"
 
+# Codex の user-level の skill の場所。$CODEX_HOME/skills は CODEX_HOME ごとに分かれ、互換のためだけに読まれる
 [tasks.install-codex]
-description = "Symlink all skills into ~/.codex/skills"
-run = 'scripts/install-skills.sh link "$HOME/.codex/skills"'
+description = "Symlink all skills into ~/.agents/skills (Codex reads it whatever CODEX_HOME is)"
+run = 'scripts/install-skills.sh link "$HOME/.agents/skills"'
 shell = "bash -c"
 
 [tasks.install-agy]

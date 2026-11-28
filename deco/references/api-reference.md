@@ -26,7 +26,7 @@ up one operation instead of reading the whole document:
 # start with /api, the Base URL's path
 curl -sf "https://deco-api.msageha.net/openapi.json" | jq -er '.paths | to_entries[]
   | select(.key | test("^/api/(luci|app)/") | not)
-  | .key as $p | .value | to_entries[] | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
+  | .key as $p | .value | to_entries[] | select(.value | type == "object") | "\(.key | ascii_upcase) \($p)  \(.value.summary // "")"'
 
 # One operation with its $refs inlined (<skill-dir>: the directory of this skill's SKILL.md)
 curl -sf "https://deco-api.msageha.net/openapi.json" | jq -e -f "<skill-dir>/scripts/openapi-operation.jq" --arg method post --arg path /api/wireless/config
@@ -67,12 +67,12 @@ Two paths, each with its own session and its own server-side lock (requests on
 one path queue up):
 
 - luci — the web UI's encrypted JSON API. Backs the typed `GET` endpoints,
-  `/login`, `/logout`, `/reboot`, `/raw` and `/api/luci/...`. Login is lazy;
+  `/login`, `/logout`, `/reboot`, `/raw` and `/luci/...`. Login is lazy;
   on 401/403, a login page or an empty `{"data": ""}` (another client such as
   the web UI took the session) it re-logs in and resends once.
 - TMP — the Deco app's protocol (TLS on port 30001, SPAKE2+ login with the
   owner's TP-Link ID). Backs `POST /wireless`, `POST /wireless/config` and
-  `/api/app/...`. Connected on first use and reconnected on the next call if
+  `/app/...`. Connected on first use and reconnected on the next call if
   dropped. After a write the router may close the TMP port while applying it;
   requests in that window, or right after the router drops the session, get
   `504` and are not resent.
@@ -84,7 +84,7 @@ one path queue up):
 
 | Status | Meaning                                                                                                                                                                  |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| 400    | `confirm: false` on `POST /reboot` or a destructive `/api/luci/...` / `/api/app/...` operation                                                                           |
+| 400    | `confirm: false` on `POST /reboot` or a destructive `/luci/...` / `/app/...` operation                                                                                   |
 | 401    | Router authentication failed (`DecoAuthError`). Once TMP rejects the email / password, every later TMP call returns 401 until the server restarts with fixed credentials |
 | 403    | Reverse proxy rejected the caller's IP or a cross-site `Origin` (nginx HTML page, not JSON)                                                                              |
 | 404    | `POST /reboot` without `macs` found no Deco units; guest toggle without `band` found no band                                                                             |
@@ -96,16 +96,19 @@ one path queue up):
 ## Wi-Fi
 
 - `GET /wireless` returns `ssid` and `password` base64-encoded — decode `ssid`
-  with `@base64d` (jq) when showing it. `password` is a secret: leave it
-  encoded and out of the output unless the user explicitly asks for it. With
+  with `@base64d` (jq) when showing it. `password` is a secret: select fields
+  so it never reaches your output; a user who wants to see it runs the command
+  themselves. With
   an automatic channel it reports the channel in use, which may differ from
   what was written.
 - Writes (`POST /wireless`, `POST /wireless/config`) go over TMP and briefly
-  disconnect clients on that band — confirm first. `ssid` / `password` are
+  disconnect clients on that band: read the band's current settings first and
+  confirm with current → new (for a password, only that it changes). Name the
+  bands: `network: guest` without `band` changes every non-separate band. `ssid` / `password` are
   sent in plain text (the server encodes them).
 - Guest Wi-Fi is per band. `POST /wireless` with `network: guest` and `band`
   omitted or `null` toggles the guest on every band whose guest isn't
-  `is_separate` in `/api/app/wireless/wlan/read` (2.4 and 5 GHz on the BE85).
+  `is_separate` in `/app/wireless/wlan/read` (2.4 and 5 GHz on the BE85).
   The 6 GHz guest (`is_separate: true`) is untouched even by `enable: false` —
   pass `band6` to change it. It is configured separately in the Deco app, and
   on this unit is unconfigured with `encryption_mode: owe` (no password), so
@@ -113,7 +116,7 @@ one path queue up):
 - In `POST /wireless/config`, `channel` / `channel_width` / `mode` apply to the
   whole band whatever `network` is. Current guest-only values
   (`host_isolation`, `access_duration`, `bandwidth_limit`) come from
-  `POST /api/app/wireless/wlan/read`. `null` values in `settings` are dropped
+  `POST /app/wireless/wlan/read`. `null` values in `settings` are dropped
   (they don't clear anything), so `settings` needs at least one non-null
   field, and so does `bandwidth_limit` (`{}` → 422). Only
   `updated.<band>.<network>.password` is masked in
@@ -130,13 +133,15 @@ reboots every node — never send an empty list meaning "none".
 ## POST /raw
 
 Generic passthrough to any Deco luci endpoint — not limited to the catalogue
-of `/api/luci/...`, so it can reach forms that return credentials; print only
+of `/luci/...`, so it can reach forms that return credentials; print only
 the fields needed. It returns the full decrypted envelope (`result` /
 `error_code` or `success` / `data`) unmodified: a router-side error comes back
 as HTTP `200` with `success: false` or a non-zero `error_code`; an HTTP error
-or invalid response from the called endpoint is `502`. Non-`read` operations
-can change arbitrary router settings — confirm with the user and prefer a
-typed endpoint when one exists. The `reboot` operation is deliberately not in
+or invalid response from the called endpoint is `502`. An operation named
+`read` can still have side effects on forms other than those below, and other
+operations can change arbitrary router settings — prefer a typed endpoint, and
+confirm with the user unless the call is one of the path + operation pairs
+below (for `feedback_log`, only `read`: its `build` starts work on the router). The `reboot` operation is deliberately not in
 the enum.
 
 Paths used internally by the typed endpoints (useful starting points):
@@ -161,14 +166,15 @@ Paths used internally by the typed endpoints (useful starting points):
 
 ## luci and Deco-app operations
 
-`POST /api/luci/<module>/<form>/<operation>` calls luci
+`POST /luci/<module>/<form>/<operation>` calls luci
 `admin/<module>?form=<form>` (`locale` has no `admin/`); `POST
-/api/app/<controller>/<form>/<operation>` calls the TMP opcode the Deco app
+/app/<controller>/<form>/<operation>` calls the TMP opcode the Deco app
 uses. They cover the operations catalogued from the FW 1.3.0 image (154 luci
-and 384 TMP); `/api/app/...` also covers features luci lacks (port forwarding,
+and 384 TMP); `/app/...` also covers features luci lacks (port forwarding,
 DHCP leases, HomeShield, QoS, Wi-Fi schedules, VPN, LEDs, …). Each entry in the
 OpenAPI document carries `x-deco-luci-path` or `x-deco-tmp-opcode`,
-`x-deco-operation` and `x-deco-destructive`.
+`x-deco-operation`, `x-deco-destructive` and `x-deco-read-only`. The paths in the document start with `/api`
+(`/api/luci/...`); the Base URL already includes it.
 
 - The body is `{"params": {...}}` (optional), sent to the router unvalidated:
   required fields differ per operation and firmware, and a rejected value is
@@ -181,27 +187,34 @@ OpenAPI document carries `x-deco-luci-path` or `x-deco-tmp-opcode`,
   group) or can't be undone (unbinding nodes or the cloud, admin account /
   TP-Link ID changes, clearing logs, history, reports, messages). Other writes
   — Wi-Fi, VPN, LEDs, reservations, port forwarding, blocking — run without
-  `confirm`, so confirm with the user yourself.
+  `confirm`, so the server doesn't stop them: follow the confirmation rules
+  in SKILL.md.
+- The operation name doesn't show whether a call is side-effect free: some
+  `read` / `get` / `check` operations may mark messages read or start a scan or
+  test (`cloud/message/read`, `acs_optimize/read`, `internet_test/get`). A
+  call the user didn't ask for runs without asking only when its entry has
+  `x-deco-read-only: true`; otherwise confirm first.
 - Use `POST /wireless` / `POST /wireless/config` (or
-  `/api/app/wireless/wlan/write`) for Wi-Fi writes: luci's
-  `/api/luci/wireless/wlan/write` fails guest writes with HTTP 500.
-- OpenVPN profile insert/update (`/api/app/vpn_client/server/{insert,update}`)
+  `/app/wireless/wlan/write`) for Wi-Fi writes: luci's
+  `/luci/wireless/wlan/write` fails guest writes with HTTP 500.
+- OpenVPN profile insert/update (`/app/vpn_client/server/{insert,update}`)
   needs a config file already uploaded to the router; this API can't upload
   files, so set OpenVPN up in the Deco app.
 - Responses return what the router stores, including Wi-Fi / PPPoE / VPN
-  passwords and WireGuard keys — don't print them unless asked.
+  passwords and WireGuard keys — select only the fields needed so they never
+  reach your output.
 - Not exposed: pre-login steps, mesh node-to-node calls, debug opcodes,
   multipart / file transfer forms (config backup / restore, firmware
   upload), and reads that return the admin password or cloud tokens.
 
 Operations used for common tasks:
 
-| Task                     | Steps                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Run a speed test         | `POST /api/luci/device/speedtest/write` `{}`, then poll `GET /device/speedtest` every few seconds until `status` is `idle`, `ever_tested` is true and `last_speed_test_time` is a new number (`fail` = failed; about 1 min; fields can be `null` mid-test). Speeds are kbps                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Firmware upgrade         | `GET /system/firmware` (the router only reports download progress after a check in the same session; stop unless a node has `need_to_upgrade`) → `POST /api/luci/cloud/firmware/download` `{}` → poll `POST /api/luci/cloud/firmware_status/read` until `download_progress` is 100 (check `status` first: 5 consecutive polls with `status` `fail`, `preparing` or missing = failed, and their `download_progress` doesn't count) → `POST /api/luci/cloud/firmware_status/upgrade` `{"confirm": true}`; the response's `upgrade_time` + `reboot_time` (s) is the expected downtime. If the upgrade call loses its response (timeout / 5xx) it may have started — wait, then check `software_ver` before retrying |
-| LEDs                     | `POST /api/app/device/led/read` `{}` → `{enable, enable_night_mode, time_begin, time_end, …}`; `POST /api/app/device/led/write` `{"params": {"enable": <bool>}}`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
-| Guest-only Wi-Fi details | `POST /api/app/wireless/wlan/read` `{}` (per band: `guest.is_separate`, `host_isolation`, `access_duration`, `bandwidth_limit`; also passwords)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
-| DHCP reservations        | `POST /api/luci/client/addr_reservation/getlist` `{}` (`add` / `modify` / `remove` to change)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
-| Port forwarding          | `POST /api/app/nat/vs/getlist` `{}` (`add` / `modify` / `remove` to change)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| Block / unblock a client | `POST /api/luci/client/black_list/{block,unblock}` (list: `GET /clients/blocked`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| Task                     | Steps                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Run a speed test         | `POST /luci/device/speedtest/write` `{}`, then poll `GET /device/speedtest` every few seconds until `status` is `idle`, `ever_tested` is true and `last_speed_test_time` is a new number (`fail` = failed; about 1 min; fields can be `null` mid-test). Speeds are kbps                                                                                                                                                                                  |
+| Firmware upgrade         | `GET /system/firmware` (stop unless a node has `need_to_upgrade`) → `POST /luci/cloud/firmware/download` `{}` → poll `POST /luci/cloud/firmware_status/read` until `download_progress` is 100 (a poll whose `status` is `fail`, `preparing` or missing doesn't count) → `POST /luci/cloud/firmware_status/upgrade` `{"confirm": true}`. What each step's result means and when not to resend: the Firmware Upgrade section of [commands.md](commands.md) |
+| LEDs                     | `POST /app/device/led/read` `{}` → `{enable, enable_night_mode, time_begin, time_end, …}`; `POST /app/device/led/write` `{"params": {"enable": <bool>}}`                                                                                                                                                                                                                                                                                                 |
+| Guest-only Wi-Fi details | `POST /app/wireless/wlan/read` `{}` (per band: `guest.is_separate`, `host_isolation`, `access_duration`, `bandwidth_limit`; also passwords)                                                                                                                                                                                                                                                                                                              |
+| DHCP reservations        | `POST /luci/client/addr_reservation/getlist` `{}` (`add` / `modify` / `remove` to change)                                                                                                                                                                                                                                                                                                                                                                |
+| Port forwarding          | `POST /app/nat/vs/getlist` `{}` (`add` / `modify` / `remove` to change)                                                                                                                                                                                                                                                                                                                                                                                  |
+| Block / unblock a client | `POST /luci/client/black_list/{block,unblock}` (list: `GET /clients/blocked`)                                                                                                                                                                                                                                                                                                                                                                            |

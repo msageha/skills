@@ -35,14 +35,16 @@ curl -sf "https://epgstation.msageha.net/api/docs" | jq -e -f "<skill-dir>/scrip
   `channel` (channel number), unlike `GET /channels`; its `name` follows
   `isHalfWidth`, while `GET /channels` `name` is always full-width (use
   `halfWidthName` there).
-- `GET /schedules/{channelId}?days=N` returns one `{channel, programs}` per
+- `GET /schedules/{channelId}?days=<n>` returns one `{channel, programs}` per
   24 h from `startAt`, each including programs that touch its edges: a program
   across midnight appears in both days, so de-duplicate by `id` when
   flattening several days.
 - `SearchTime.week` is a bitmask, Sunday `0x01` … Saturday `0x40`; combine days
   with bitwise OR (Mon + Wed = `0x02 | 0x08` = `10`; the document says "and").
   `0` is rejected.
-- Rules (`POST /rules`, `PUT /rules/{ruleId}`): with `channelIds`, the
+- Rules (`POST /rules`, `PUT /rules/{ruleId}`): rules create and remove
+  reservations, so confirm with the user, saying which programs it affects,
+  before adding, editing, enabling, disabling or deleting one. With `channelIds`, the
   broadcast flags `GR` / `BS` / `CS` / `SKY` must all be false. With
   `isTimeSpecification: true`, `keyword`, `channelIds` and `times` are
   required, and each `times` entry needs `start` (seconds from 00:00) and
@@ -63,6 +65,17 @@ curl -sf "https://epgstation.msageha.net/api/docs" | jq -e -f "<skill-dir>/scrip
   `needsRawExtended`.
 - `POST /reserves` needs either `programId` (from a schedule or search
   result) or `timeSpecifiedOption`; the document marks neither as required.
+  For `programId`, search first; when more than one program fits, show the
+  candidates. A reservation the user asked for, with its target settled, needs
+  no further confirmation.
+- `DELETE /reserves/{reserveId}` and `DELETE /recorded/{recordedId}` run when
+  the user asked to delete that target; otherwise confirm first, naming the
+  recording (deleting a recording is irreversible). Deleting a reservation a
+  rule made (other than an event relay) doesn't remove it: it stays with
+  `isSkip: true` (or `isOverlap: true`). Deleting a recording that is still
+  recording stops the recording first; a protected recording can't be
+  deleted. Deleting a recording removes its record even when removing the
+  file fails.
 
 ## Genre IDs (ARIB STD-B10)
 

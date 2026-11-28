@@ -38,13 +38,28 @@ an API error.
   shortcuts `netflix` `youtube` `prime_video` `custom` `custom_long`. `power`
   only opens the on-screen power menu — it does not switch the unit off.
 - `POST /power/off` (`{"confirm": true}` required) really powers the
-  projector down, and this API cannot turn it back on — always confirm with
-  the user first.
+  projector down, and this API cannot turn it back on. The request doesn't
+  show that, so confirm with the user first, saying it can't be undone here.
 - DLNA endpoints (`/status`, `/volume`, `/mute`, playback, `/cast`, `/soap`)
   need the projector running: with only the ceiling light on, or the
   projector off, they fail with `504` "cannot reach". The light's on/off
   state can't be read in any state. A `504` from them doesn't
   by itself prove the projector is off (any network failure gives it).
+- `/keyboard`, `/voice` and `/deeplink` echo what they were sent, and `/cast`
+  echoes the URI: select fields so the echo isn't printed. `/status`, `/media`
+  and `/position` return the current URIs and their metadata, which can carry
+  tokens: drop `current_uri*` / `track_uri*` / `*_metadata` when printing, and
+  compare a URI with `jq -e` (true / false) instead of showing it. The raw SOAP
+  `GetMediaInfo` / `GetPositionInfo` return the same values as `CurrentURI`,
+  `CurrentURIMetaData`, `NextURI`, `NextURIMetaData`, `TrackURI` and
+  `TrackMetaData`: drop those too. Don't send
+  passwords or other secrets through them unless the user explicitly hands
+  that over (a password, or a signed media URI for `/cast`); then the user
+  writes it to a file and jq builds the body from it straight into curl's
+  stdin, with the response discarded, so the value reaches neither the command
+  nor your output:
+  `jq -n --rawfile t "<secret-file>" '{text: ($t | sub("\r?\n$"; ""))}' | curl -sSf -o /dev/null -w '%{http_code}\n' -X POST "https://popin-aladdin.msageha.net/api/keyboard" -H "Content-Type: application/json" --data-binary @-`
+  (`url` for `/deeplink`, `uri` plus `upnp_class` for `/cast`).
 - `GET /discover` returns `[]` on this instance (the server runs on a Docker
   bridge network, so its LAN broadcast reaches no device); the unit's address
   is fixed in the server config, so it isn't needed.
@@ -65,10 +80,28 @@ an API error.
   `power`, text input, voice, ping. The other keys, `/remote/*` info
   endpoints, `/discover`, `/deeplink`, `/memory/free`, `/capture` and
   `/power/off` were reconstructed from the official app and are unverified.
-- Writes are immediately visible in the room (light/volume/playback). Safe to
-  do when asked; confirm first for `/power/off`, stopping or skipping active playback,
-  casting over running content (or when you can't tell), and `/soap` actions outside its read-only
-  list (`confirm: true` required).
+- Writes are immediately visible in the room (light/volume/playback). Run
+  them when the user asks, without asking again. Confirm first for
+  `/power/off`, for stopping or skipping active playback the user didn't ask
+  to stop, for casting over running content (or when you can't tell), and for
+  `/soap` actions outside its read-only list (`confirm: true` required).
+- Report a write as done only after reading the effect back where it is
+  observable: `GET /volume` / `GET /mute`, `GET /media` and `GET /transport`
+  after `/cast` or playback controls, `GET /position` after `/seek`, the
+  read-only SOAP `GetTransportSettings` after `/play-mode`, and
+  `/remote/device` for app launches. The
+  light's state and most key presses can't be read: report them as sent, with
+  the effect unconfirmed.
+- Send requests as commands.md does, with `curl -sSf` under
+  `set -o pipefail`. A failed connection or an HTTP status of 400 or above
+  then exits non-zero and prints the error to stderr instead of the body, so
+  an error body never reaches a jq filter, which would print it or turn its
+  missing fields into `null` that reads like a result. Treat a write
+  as done only when curl exited 0. A 4xx means the request was rejected and
+  nothing changed: check it against the operation's schema
+  (api-reference) rather than resending it to read the error. After
+  a 5xx, a timeout or a dropped connection the write may have taken effect:
+  read the state before resending.
 - Errors: `400` missing or false `confirm` (`/soap` non-read-only actions, `/power/off`), `422`
   body validation (unknown button, volume out of range, …), `502` device
   returned a SOAP fault or an unexpected answer (`detail`; SOAP faults add

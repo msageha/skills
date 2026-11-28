@@ -5,105 +5,116 @@ request/response schemas, see [api-reference.md](api-reference.md): how to look
 them up in the server's OpenAPI document, and what the document leaves out. Base URL: `https://popin-aladdin.msageha.net/api`.
 Run requests sequentially — the server serializes them behind one device session.
 
-The examples use `curl -s` for brevity, which exits 0 on an HTTP error, and pipe
-to `jq`, which turns an error body into `null`s. Before reporting a write as
-done or trusting a filtered result, check the request: run with
-`set -o pipefail` and `curl -sf`, or save the body with `-o <file>` and read
-the status from `-w '%{http_code}'`.
+The examples call curl with `-sSf` under `set -o pipefail`: a request that
+fails (no connection, or an HTTP status of 400 or above) makes the command exit
+non-zero with the error on stderr and no body, as the success check in SKILL.md
+expects. Free text taken from responses, web pages or other external sources
+(names, descriptions, URLs) goes into the body through a file, not pasted into
+the command: `jq -n --rawfile v "<text-file>" '($v | sub("\r?\n$"; "")) as $v | <filter>' > "<body-file>"`
+builds the body (dropping the file's trailing LF or CRLF), and
+`--data-binary @"<body-file>"` sends it. Build a body whose value holds a quote
+or backslash with jq (`--arg <name> '<value>'`) too, since it breaks a JSON
+literal in `-d '…'`.
 
 ## Health / Device Info
 
 ```bash
-curl -s "https://popin-aladdin.msageha.net/api/health" | jq .
-curl -s "https://popin-aladdin.msageha.net/api/info" | jq .
+set -o pipefail
+curl -sSf "https://popin-aladdin.msageha.net/api/health" | jq .
+curl -sSf "https://popin-aladdin.msageha.net/api/info" | jq .
 
 # Proprietary control plane reachable?
-curl -s -X POST "https://popin-aladdin.msageha.net/api/remote/ping" | jq .
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/remote/ping" | jq .
 
 # Light / remote button names accepted by /light and /key
-curl -s "https://popin-aladdin.msageha.net/api/remote/buttons" | jq .
+curl -sSf "https://popin-aladdin.msageha.net/api/remote/buttons" | jq .
 
 # Model / OS / storage / feature flags (TCP Version handshake)
-curl -s "https://popin-aladdin.msageha.net/api/remote/version" | jq .
+curl -sSf "https://popin-aladdin.msageha.net/api/remote/version" | jq .
 ```
 
 ## What's on Screen
 
 ```bash
+set -o pipefail
 # Foreground app (apps like YouTube are invisible to the DLNA /status)
-curl -s "https://popin-aladdin.msageha.net/api/remote/device" | jq '{foreground_app, foreground_package}'
+curl -sSf "https://popin-aladdin.msageha.net/api/remote/device" | jq '{foreground_app, foreground_package}'
 
 # Screenshot — the returned image_url is served by the device on its LAN
-curl -s -X POST "https://popin-aladdin.msageha.net/api/capture" | jq .
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/capture" | jq .
 ```
 
 ## Ceiling Light
 
 ```bash
+set -o pipefail
 # Turn the light on / off
-curl -s -X POST "https://popin-aladdin.msageha.net/api/light" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/light" \
   -H "Content-Type: application/json" -d '{"button": "on"}' | jq .
-curl -s -X POST "https://popin-aladdin.msageha.net/api/light" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/light" \
   -H "Content-Type: application/json" -d '{"button": "off"}' | jq .
 
 # Brightness: 5 steps up / 3 steps down
-curl -s -X POST "https://popin-aladdin.msageha.net/api/light" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/light" \
   -H "Content-Type: application/json" -d '{"button": "brighter", "repeat": 5}' | jq .
-curl -s -X POST "https://popin-aladdin.msageha.net/api/light" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/light" \
   -H "Content-Type: application/json" -d '{"button": "darker", "repeat": 3}' | jq .
 
 # Color temperature / presets
-curl -s -X POST "https://popin-aladdin.msageha.net/api/light" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/light" \
   -H "Content-Type: application/json" -d '{"button": "warmer", "repeat": 2}' | jq .
-curl -s -X POST "https://popin-aladdin.msageha.net/api/light" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/light" \
   -H "Content-Type: application/json" -d '{"button": "night"}' | jq .
 ```
 
 ## Playback Status
 
 ```bash
-curl -s "https://popin-aladdin.msageha.net/api/status" | jq .
+set -o pipefail
+curl -sSf "https://popin-aladdin.msageha.net/api/status" | jq 'del(.. | objects | .current_uri?, .current_uri_metadata?, .track_uri?, .track_metadata?)'   # URIs can carry tokens
 
 # Position and media details
-curl -s "https://popin-aladdin.msageha.net/api/position" | jq .
-curl -s "https://popin-aladdin.msageha.net/api/media" | jq .
+curl -sSf "https://popin-aladdin.msageha.net/api/position" | jq 'del(.. | objects | .current_uri?, .current_uri_metadata?, .track_uri?, .track_metadata?)'
+curl -sSf "https://popin-aladdin.msageha.net/api/media" | jq 'del(.. | objects | .current_uri?, .current_uri_metadata?, .track_uri?, .track_metadata?)'
 
 # Transport state / supported protocols
-curl -s "https://popin-aladdin.msageha.net/api/transport" | jq .
-curl -s "https://popin-aladdin.msageha.net/api/protocol-info" | jq .
+curl -sSf "https://popin-aladdin.msageha.net/api/transport" | jq .
+curl -sSf "https://popin-aladdin.msageha.net/api/protocol-info" | jq .
 ```
 
 ## Volume / Mute
 
 ```bash
-curl -s "https://popin-aladdin.msageha.net/api/volume" | jq .
-curl -s "https://popin-aladdin.msageha.net/api/mute" | jq .
+set -o pipefail
+curl -sSf "https://popin-aladdin.msageha.net/api/volume" | jq .
+curl -sSf "https://popin-aladdin.msageha.net/api/mute" | jq .
 
-curl -s -X POST "https://popin-aladdin.msageha.net/api/volume" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/volume" \
   -H "Content-Type: application/json" -d '{"volume": 40}' | jq .
 
-curl -s -X POST "https://popin-aladdin.msageha.net/api/mute" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/mute" \
   -H "Content-Type: application/json" -d '{"mute": true}' | jq .
 ```
 
 ## Playback Control
 
 Stopping active playback (or skipping away from it) is visible in the room —
-confirm with the user first if something is playing.
+unless the user asked for it, confirm first if something is playing.
 
 ```bash
-curl -s -X POST "https://popin-aladdin.msageha.net/api/play" | jq .
-curl -s -X POST "https://popin-aladdin.msageha.net/api/pause" | jq .
-curl -s -X POST "https://popin-aladdin.msageha.net/api/stop" | jq .
-curl -s -X POST "https://popin-aladdin.msageha.net/api/next" | jq .
-curl -s -X POST "https://popin-aladdin.msageha.net/api/previous" | jq .
+set -o pipefail
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/play" | jq .
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/pause" | jq .
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/stop" | jq .
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/next" | jq .
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/previous" | jq .
 
 # Seek to 1:30
-curl -s -X POST "https://popin-aladdin.msageha.net/api/seek" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/seek" \
   -H "Content-Type: application/json" -d '{"seconds": 90}' | jq .
 
 # Repeat all
-curl -s -X POST "https://popin-aladdin.msageha.net/api/play-mode" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/play-mode" \
   -H "Content-Type: application/json" -d '{"mode": "REPEAT_ALL"}' | jq .
 ```
 
@@ -117,34 +128,37 @@ so after a failure check `/media` (URI) and `/transport` (state) before
 resending.
 
 ```bash
+set -o pipefail
+# Public URLs only: a signed URI would stay in the command line; send it as SKILL.md describes
 # Video (autoplay)
-curl -s -X POST "https://popin-aladdin.msageha.net/api/cast" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/cast" \
   -H "Content-Type: application/json" \
-  -d '{"uri": "http://192.168.1.50:8200/video/sample.mp4",
-       "upnp_class": "object.item.videoItem"}' | jq .
+  -d '{"uri": "<video-url>",
+       "upnp_class": "object.item.videoItem"}' | jq '{autoplay}'   # the response echoes the URI
 
 # Image
-curl -s -X POST "https://popin-aladdin.msageha.net/api/cast" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/cast" \
   -H "Content-Type: application/json" \
-  -d '{"uri": "http://192.168.1.50:8200/photo.jpg",
-       "upnp_class": "object.item.imageItem"}' | jq .
+  -d '{"uri": "<image-url>",
+       "upnp_class": "object.item.imageItem"}' | jq '{autoplay}'
 ```
 
 ## Launch Apps (deeplink / shortcut keys)
 
 ```bash
+set -o pipefail
 # Open a URL / app scheme on the device
-curl -s -X POST "https://popin-aladdin.msageha.net/api/deeplink" \
-  -H "Content-Type: application/json" -d '{"url": "https://www.youtube.com/tv"}' | jq .
-curl -s -X POST "https://popin-aladdin.msageha.net/api/deeplink" \
-  -H "Content-Type: application/json" -d '{"url": "tver://"}' | jq .
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/deeplink" \
+  -H "Content-Type: application/json" -d '{"url": "https://www.youtube.com/tv"}' -o /dev/null -w '%{http_code}\n'   # the response echoes the URL
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/deeplink" \
+  -H "Content-Type: application/json" -d '{"url": "tver://"}' -o /dev/null -w '%{http_code}\n'
 
 # Remote shortcut keys
-curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/key" \
   -H "Content-Type: application/json" -d '{"button": "youtube"}' | jq .
 
 # Is an app installed?
-curl -s "https://popin-aladdin.msageha.net/api/remote/apps/jp.co.tver.tvapp" | jq .
+curl -sSf "https://popin-aladdin.msageha.net/api/remote/apps/jp.co.tver.tvapp" | jq .
 ```
 
 ## Remote Keys (D-pad / focus / hardware)
@@ -154,48 +168,51 @@ curl -s "https://popin-aladdin.msageha.net/api/remote/apps/jp.co.tver.tvapp" | j
 unit is on.
 
 ```bash
+set -o pipefail
 # Navigate: down twice, then OK
-curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
-  -H "Content-Type: application/json" -d '{"button": "down", "repeat": 2}' | jq .
-curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
-  -H "Content-Type: application/json" -d '{"button": "ok"}' | jq .
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/key" \
+  -H "Content-Type: application/json" -d '{"button": "down", "repeat": 2}' | jq . \
+  && curl -sSf -X POST "https://popin-aladdin.msageha.net/api/key" \
+    -H "Content-Type: application/json" -d '{"button": "ok"}' | jq .
 
 # Back / Home / Settings
-curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/key" \
   -H "Content-Type: application/json" -d '{"button": "back"}' | jq .
-curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/key" \
   -H "Content-Type: application/json" -d '{"button": "home"}' | jq .
-curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/key" \
   -H "Content-Type: application/json" -d '{"button": "settings"}' | jq .
 
 # Focus adjustment (one step each)
-curl -s -X POST "https://popin-aladdin.msageha.net/api/key" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/key" \
   -H "Content-Type: application/json" -d '{"button": "focus_plus"}' | jq .
 ```
 
 ## Text / Voice Input
 
 ```bash
-# Type into the focused on-screen input (focus it with /key first)
-curl -s -X POST "https://popin-aladdin.msageha.net/api/keyboard" \
-  -H "Content-Type: application/json" -d '{"text": "hello world"}' | jq .
+# Type into the focused on-screen input (focus it with /key first). The response echoes
+# the text; for a secret the user handed over, see SKILL.md
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/keyboard" \
+  -H "Content-Type: application/json" -d '{"text": "<text>"}' -o /dev/null -w '%{http_code}\n'
 
 # Voice command as text
-curl -s -X POST "https://popin-aladdin.msageha.net/api/voice" \
-  -H "Content-Type: application/json" -d '{"text": "天気を教えて"}' | jq .
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/voice" \
+  -H "Content-Type: application/json" -d '{"text": "<voice-command>"}' -o /dev/null -w '%{http_code}\n'
 ```
 
 ## Maintenance / Power
 
 ```bash
+set -o pipefail
 # Free memory (kills background apps)
-curl -s -X POST "https://popin-aladdin.msageha.net/api/memory/free" | jq .
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/memory/free" | jq .
 
 # Photo memory (on-device album) and light-unit firmware
-curl -s "https://popin-aladdin.msageha.net/api/remote/album" | jq '{count, free_space, light_version}'
+curl -sSf "https://popin-aladdin.msageha.net/api/remote/album" | jq '{count, free_space, light_version}'
 
-# Power off — irreversible from this API, confirm with the user first
-curl -s -X POST "https://popin-aladdin.msageha.net/api/power/off" \
+# Power off — this API can't turn it back on; confirm with the user first
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/power/off" \
   -H "Content-Type: application/json" -d '{"confirm": true}' | jq .
 ```
 
@@ -206,14 +223,15 @@ Only the read-only actions listed in api-reference.md (`GetTransportInfo`,
 `confirm: true` — confirm with the user and prefer the typed endpoints.
 
 ```bash
+set -o pipefail
 # Read transport info
-curl -s -X POST "https://popin-aladdin.msageha.net/api/soap" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/soap" \
   -H "Content-Type: application/json" \
   -d '{"service": "AVTransport", "action": "GetTransportInfo",
        "args": {"InstanceID": 0}}' | jq .
 
 # Set volume via raw SOAP (confirm required)
-curl -s -X POST "https://popin-aladdin.msageha.net/api/soap" \
+curl -sSf -X POST "https://popin-aladdin.msageha.net/api/soap" \
   -H "Content-Type: application/json" \
   -d '{"service": "RenderingControl", "action": "SetVolume",
        "args": {"InstanceID": 0, "Channel": "Master", "DesiredVolume": 20},
